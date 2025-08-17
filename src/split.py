@@ -12,36 +12,41 @@ class Split:
         output:str,
         length: float,
         dev: float | None = 0,
-        numchunks: int | None = 0,
-        mode: Literal["stereo", "mono"] | None = None
+        nchunks: int | None = 0,
+        nchannels: Literal[1,2] | None = None
     ):
         # validate data
         track = Track(read(trackname))
+        print("###", track.data)
         output = fp_to_abs(output)
 
         validate_isfloat(length)
-        if numchunks is not None:
-            validate_isint(numchunks)
+        if nchunks is not None:
+            validate_isint(nchunks)
         if dev is not None:
             validate_isfloat(dev)
-        if mode is not None:
-            validate_isinlist(mode, ["stereo", "mono"])
+        if nchannels is not None:
+            validate_isint(nchannels)
+            nchannels = int(nchannels)
+            validate_isinlist(nchannels, [1, 2])
 
         # define defaults and do conversions
         length = seconds_to_frame(length, track.samplerate)
         if dev is None:
             dev == 0
-        if numchunks is None or numchunks == 0:
-            numchunks = track.nframes / length  # track length / splitted chunk length
-        if mode is None:
-            mode = "mono" if track.nchannels == 1 else "stereo"  # define default based on number of channels in input tracks
-        if mode == "mono":
+        if nchunks is None or nchunks == 0:
+            nchunks = track.nframes / length  # track length / splitted chunk length
+        if nchannels is None:
+            nchannels = 1 if track.nchannels == 1 else 2  # define default based on number of channels in input track
+        if nchannels == 1:
             track = track.to_mono()
+        else:
+            track = track.to_stereo()
 
         self.track = track
         self.output = output
         self.l = length  # internally stored at self.track's sampling rate
-        self.n = numchunks
+        self.n = nchunks
         self.dev = dev
-        self.mode = mode
+        self.nchannels = nchannels
 

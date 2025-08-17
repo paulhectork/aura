@@ -43,23 +43,23 @@ def envelope():
     help="length standard deviation (defaults to 0)"
 )
 @click.option(
-    "-n", "--numchunks",
+    "-n", "--nchunks",
     type=click.INT,
     help="number of samples to generate (if None, tracklength / length)"
 )
 @click.option(
-    "-m", "--mode",
-    type=click.Choice(["solo", "stereo"]),
+    "-c", "--channels",
+    type=click.Choice([1,2]),
     default=None,
-    help="length standard deviation (defaults to same as `trackname`)"
+    help="number of channels in output tracks"
 )
 def split(
     trackname,
     output,
     length,
     dev,
-    numchunks,
-    mode
+    nchunks,
+    channels
 ):
     """
     command line interface for aura.split
@@ -69,8 +69,8 @@ def split(
         output=output,
         length=length,
         dev=dev,
-        numchunks=numchunks,
-        mode=mode
+        nchunks=nchunks,
+        nchannels=channels
     )
 
 

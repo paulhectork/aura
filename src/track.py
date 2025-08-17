@@ -18,4 +18,17 @@ class Track():
     def to_mono(self):
         if self.nchannels > 1:
             self.data = np.mean(self.data, axis=1)
+            self.nchannels = 1
+        return self
+
+    def to_stereo(self):
+        if self.nchannels == 2:
+            pass
+        elif self.nchannels == 1:
+            # convert ndarray of shape (x, 1) into ndarray of shape (x, 2): [ [l1,r1],[l2,r2], ... ]
+            self.data = self.data / 2
+            self.data = np.transpose(np.vstack((self.data, self.data)))
+            self.nchannels = 2
+        else:
+            raise NotImplementedError(f"'to_stereo' conversion not implemented for number of channels: '{self.nchannels}'")
         return self
