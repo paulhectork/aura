@@ -9,7 +9,6 @@ class Track():
             nchannels = 1
         else:
             nchannels = data[1].shape[1]
-
         self.samplerate = data[0]
         self.nchannels = nchannels
         self.nframes = data[1].shape[0]  # number of frames in Track

@@ -17,7 +17,6 @@ class Split:
     ):
         # validate data
         track = Track(read(trackname))
-        print("###", track.data)
         output = fp_to_abs(output)
 
         validate_isfloat(length)
