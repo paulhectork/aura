@@ -35,6 +35,8 @@ class Split:
             numchunks = track.nframes / length  # track length / splitted chunk length
         if mode is None:
             mode = "mono" if track.nchannels == 1 else "stereo"  # define default based on number of channels in input tracks
+        if mode == "mono":
+            track = track.to_mono()
 
         self.track = track
         self.output = output

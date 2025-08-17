@@ -14,3 +14,8 @@ class Track():
         self.nchannels = nchannels
         self.nframes = data[1].shape[0]  # number of frames in Track
         self.data = data[1]
+
+    def to_mono(self):
+        if self.nchannels > 1:
+            self.data = np.mean(self.data, axis=1)
+        return self
