@@ -1,6 +1,8 @@
 import os
 from typing import List
 
+from pathlib import Path
+
 
 def validate_points(role: str, p:int):
     if not isinstance(p, float):
@@ -22,6 +24,21 @@ def validate_isinlist(i, vallist: List) -> None:
     if i not in vallist:
         raise ValueError(f"invalid value: expected one of {vallist}, got '{i}'")
 
+def validate_islt(a, b):
+    if not a < b:
+        raise ValueError(f"expected a<b (a={a}, b={b})")
+
+def validate_isle(a, b):
+    if not a <= b:
+        raise ValueError(f"expected a<=b (a={a}, b={b})")
+
+def validate_isgt(a, b):
+    if not a > b:
+        raise ValueError(f"expected a>b (a={a}, b={b})")
+
+def validate_isge(a, b):
+    if not a >= b:
+        raise ValueError(f"expected a>=b (a={a}, b={b})")
 
 def validate_isinrange(
     i: float|int,
@@ -47,6 +64,6 @@ def validate_float_isinrange(
     validate_isinrange(i, min_, max_, inclusive)
 
 
-def validate_path_exists(fp:os.PathLike):
-    if not os.path.exists(fp):
+def validate_path_exists(fp:Path):
+    if not fp.exists():
         raise FileNotFoundError(f"input file '{fp}' not found")

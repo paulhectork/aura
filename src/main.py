@@ -40,7 +40,7 @@ def envelope():
     "-d", "--dev",
     type=click.FLOAT,
     default=0,
-    help="length standard deviation (defaults to 0)"
+    help="length standard deviation, in seconds (defaults to 0)"
 )
 @click.option(
     "-n", "--nchunks",
@@ -71,7 +71,7 @@ def split(
         dev=dev,
         nchunks=nchunks,
         nchannels=nchannels
-    )
+    ).pipeline()
 
 
 @cli.command()
