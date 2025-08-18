@@ -2,25 +2,25 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def seconds_to_frame(time:float, samplerate:int) -> int:
+def seconds_to_frame(time:float, rate:int) -> int:
     """
-    convert a time in seconds to a specific frame given a samplerate
+    convert a time in seconds to a specific frame given a rate
     (e.g. get the frame at 1.8s in 44100hz)
 
     :param time: time in seconds
-    :param samplerate: sample rate to convert to
+    :param rate: sample rate to convert to
     """
-    return round(time * samplerate)
+    return round(time * rate)
 
 
-def frame_to_seconds(frame: int, samplerate:int) -> int:
+def frame_to_seconds(frame: int, rate:int) -> int:
     """
-    convert a frame at a given samplerate to a time in seconds
+    convert a frame at a given rate to a time in seconds
 
-    :param frame: frame in a given samplerate
-    :param samplerate: the sample rate of frame
+    :param frame: frame in a given rate
+    :param rate: the sample rate of frame
     """
-    return round(frame / samplerate)
+    return round(frame / rate)
 
 
 def get_chunk_ends(chunk_starts: NDArray, chunk_lengths: NDArray) -> NDArray:

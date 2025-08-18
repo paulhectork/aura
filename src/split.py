@@ -49,9 +49,9 @@ class Split:
             validate_isinlist(nchannels, [1, 2])
 
         # define defaults and do conversions
-        length = seconds_to_frame(length, track.samplerate)
+        length = seconds_to_frame(length, track.rate)
         dev = 0 if dev is None else float(dev)
-        dev = seconds_to_frame(dev, track.samplerate)
+        dev = seconds_to_frame(dev, track.rate)
         if nchunks is None or nchunks == 0:
             nchunks = int(track.nframes / length)  # track length / splitted chunk length
         if nchannels is None:
@@ -164,7 +164,7 @@ class Split:
                 and assert_nchannels
 
             self.chunks.append(Track(
-                samplerate=self.track.samplerate,
+                rate=self.track.rate,
                 data=chunk,
                 trackpath=self.to_outpath(i)
             ))

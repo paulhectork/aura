@@ -1,7 +1,7 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, List
 
 import numpy as np
 from numpy.typing import NDArray
@@ -47,6 +47,24 @@ def read(fp:Path|str) -> Tuple[Tuple[int, NDArray], Path]:
     return wavfile.read(fp), fp
 
 
-def write(fp:Path|str, samplerate:int, data:NDArray) -> None:
-    return wavfile.write(fp, samplerate, data)
+def write(fp:Path|str, rate:int, data:NDArray) -> None:
+    return wavfile.write(fp, rate, data)
 
+def read_from_dir(dp:str|Path) ->  List[Tuple[Tuple[int, NDArray], Path]]:
+    """
+    :returns: [ ((rate1, data1), fp1), ((rate2, data2), fp2), ... ]
+    """
+    dp = fp_to_abs(dp)
+    if not dp.is_dir():
+        raise ValueError(f"'dp' should be a path to an existing directory (dp=`{dp}`)")
+    fp_list = [ fp.resolve() for fp in dp.iterdir() if fp.is_file() ]
+    tracklist = []
+    for fp in fp_list:
+        try:
+            tracklist.append(read(fp))
+        except ValueError:
+            print(f"skipping non-sound file '{fp}'")
+    if not len(tracklist):
+        raise ValueError(f"directory should contain at least one sound file (directory='{dp}', contents='{fp_list}')")
+
+    return tracklist
