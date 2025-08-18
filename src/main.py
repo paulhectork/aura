@@ -19,13 +19,13 @@ def envelope():
 
 @cli.command()
 @click.option(
-    "-t", "--trackname",
+    "-t", "--trackpath",
     type=click.STRING,
     required=True,
     help="path of the input track"
 )
 @click.option(
-    "-o", "--output",
+    "-o", "--outpath",
     type=click.STRING,
     required=True,
     help="path of the output folder"
@@ -61,8 +61,8 @@ def envelope():
     help="overwrite contents of output directory. if not used, will raise an error if the output dir exists"
 )
 def split(
-    trackname,
-    output,
+    trackpath,
+    outpath,
     length,
     dev,
     nchunks,
@@ -70,11 +70,11 @@ def split(
     overwrite
 ):
     """
-    command line interface for aura.split: generate `nchunks` random chunks of `length` seconds (+/- `dev` standard deviation) from track `trackname` and write them to `output`
+    command line interface for aura.split: generate `nchunks` random chunks of `length` seconds (+/- `dev` standard deviation) from track `trackpath` and write them to `output`
     """
     Split(
-        trackname=trackname,
-        output=output,
+        trackpath=trackpath,
+        outpath=outpath,
         length=length,
         dev=dev,
         nchunks=nchunks,

@@ -1,19 +1,20 @@
 from typing import Literal, List
 from pathlib import Path
+import re
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import truncnorm
 
 from track import Track
-from utils.io_op import read, fp_to_abs, make_dir
+from utils.io_op import make_dir
 from utils.utils import seconds_to_frame, get_chunk_ends
 from utils.validate import validate_isint, validate_isfloat, validate_isinlist, validate_islt
 
 class Split:
 
     track: Track
-    output: Path
+    outpath: Path
     length: int
     nchunks: int
     dev: float
@@ -24,8 +25,8 @@ class Split:
 
     def __init__(
         self,
-        trackname:str,
-        output:str,
+        trackpath:str,
+        outpath:str,
         length: float,
         dev: float | None = 0,
         nchunks: int | None = 0,
@@ -33,8 +34,8 @@ class Split:
         overwrite: bool = False
     ):
         # validate data
-        track = Track(*read(trackname))
-        output = make_dir(output, overwrite)  # pyright: ignore
+        track = Track.read(trackpath)
+        outpath = make_dir(outpath, overwrite)  # pyright: ignore
 
         validate_isfloat(length)
         if nchunks is not None:
@@ -44,7 +45,7 @@ class Split:
             validate_islt(dev, length)
         if nchannels is not None:
             validate_isint(nchannels)
-            nchannels = int(nchannels)
+            nchannels = int(nchannels)  # pyright: ignore
             validate_isinlist(nchannels, [1, 2])
 
         # define defaults and do conversions
@@ -63,7 +64,7 @@ class Split:
         split_all = nchunks * length == track.nframes  # pyright:ignore .
 
         self.track = track
-        self.output = output  # pyright: ignore
+        self.outpath = outpath  # pyright: ignore
         self.length = length  # internally stored at self.track's sampling rate
         self.nchunks = nchunks  # pyright: ignore
         self.dev = dev
@@ -76,6 +77,14 @@ class Split:
         """
         self.make_chunk_pos().make_chunks().write_chunks()
         return self
+
+    def to_outpath(self, n:int) -> Path:
+        """
+        generate an outpath track name for a chunk
+        :param n: the position of this chunk in the `self.chunk` array
+        """
+        basename_in = re.sub(r"\.[^\.]+$", "", self.track.trackpath.name)  # pyright: ignore . file name without path and extension
+        return self.outpath.joinpath(f"{basename_in}_chunk{n}.wav")
 
     def make_chunk_pos(self):
         """
@@ -143,7 +152,7 @@ class Split:
         use self.chunk_pos as indices and populate `self.chunks`
         """
         self.chunks = []
-        for (start, end) in self.chunk_pos:
+        for i, (start, end) in enumerate(self.chunk_pos):
             chunk = self.track.data[start:end]
             # asert `chunk` has the same number of dimensions and same number of channels as `self.track`
             assert_nchannels = chunk.shape[1] == self.track.data.shape[1] \
@@ -154,12 +163,15 @@ class Split:
 
             self.chunks.append(Track(
                 samplerate=self.track.samplerate,
-                data=chunk
+                data=chunk,
+                trackpath=self.to_outpath(i)
             ))
 
         return self
 
     def write_chunks(self):
         """
-        write self.chunks to output folder
+        write self.chunks to outpath folder
         """
+        for chunk in self.chunks:
+            chunk.write()
