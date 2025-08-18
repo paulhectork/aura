@@ -51,7 +51,7 @@ def envelope():
     "-c", "--nchannels",
     type=click.Choice([1,2]),
     default=None,
-    help="number of channels in output tracks"
+    help="number of channels in output tracks (1=mono, 2=stereo). if None, same as number of channels in input track"
 )
 def split(
     trackname,
