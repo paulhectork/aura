@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 from scipy.stats import truncnorm
 
 from track import Track
-from utils.io_op import read, fp_to_abs
+from utils.io_op import read, fp_to_abs, make_dir
 from utils.utils import seconds_to_frame, get_chunk_ends
 from utils.validate import validate_isint, validate_isfloat, validate_isinlist, validate_islt
 
@@ -29,11 +29,12 @@ class Split:
         length: float,
         dev: float | None = 0,
         nchunks: int | None = 0,
-        nchannels: Literal[1,2] | None = None
+        nchannels: Literal[1,2] | None = None,
+        overwrite: bool = False
     ):
         # validate data
         track = Track(*read(trackname))
-        output = fp_to_abs(output)
+        output = make_dir(output, overwrite)  # pyright: ignore
 
         validate_isfloat(length)
         if nchunks is not None:
@@ -73,9 +74,7 @@ class Split:
         """
         split track into chunks
         """
-        self.make_chunk_pos().make_chunks()
-
-        print(self.chunks)
+        self.make_chunk_pos().make_chunks().write_chunks()
         return self
 
     def make_chunk_pos(self):
@@ -89,22 +88,27 @@ class Split:
         - chunk_starts  : start position of all chunks
         - chunk_ends    : end position of all chunks
         """
-        # 1; calculate chunk lengths
-        # chunk lengths (in number of frames) are calculated using a truncated standard deviation. truncation allows to set min/max values for the standard deviations.
+        # 1; calculate chunk lengths, applying standard deviation if needed
+        #
+        #  chunk lengths (in number of frames) are calculated using a truncated standard deviation. truncation allows to set min/max values for the standard deviations.
         # we truncate to (0, 2*length)
         # `truncnorm.rvs` expects min/max to be expressed in `number of standard deviations` => we convert from absoute min/max values to numbe of standard deviations
         abs_to_std = lambda x: (x - self.length) / self.dev
-        min_ = abs_to_std(0)
-        max_ = abs_to_std(2*self.length)
 
-        chunk_lengths = truncnorm.rvs(
-            min_, max_,
-            loc=self.length,
-            scale=self.dev,
-            size=self.nchunks
-        )
-        assert chunk_lengths[chunk_lengths < 0].shape[0] == 0
-        assert chunk_lengths[chunk_lengths > 2*self.length].shape[0] == 0
+        if self.dev > 0:
+            min_ = abs_to_std(0)
+            max_ = abs_to_std(2*self.length)
+
+            chunk_lengths = np.array(truncnorm.rvs(
+                min_, max_,
+                loc=self.length,
+                scale=self.dev,
+                size=self.nchunks
+            ))
+            assert chunk_lengths[chunk_lengths < 0].shape[0] == 0
+            assert chunk_lengths[chunk_lengths > 2*self.length].shape[0] == 0
+        else:
+            chunk_lengths = np.array([self.length for _ in range(self.nchunks)])
 
         # 2: calculate chunk starting positions
         # if split_all, all chunks are successive. otherwise, chunks are positionned at random
@@ -155,7 +159,7 @@ class Split:
 
         return self
 
-    def writ_chunks(self):
+    def write_chunks(self):
         """
         write self.chunks to output folder
         """

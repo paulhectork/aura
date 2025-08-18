@@ -53,13 +53,21 @@ def envelope():
     default=None,
     help="number of channels in output tracks (1=mono, 2=stereo). if None, same as number of channels in input track"
 )
+@click.option(
+    '-w', "--overwrite",
+    type=click.BOOL,
+    is_flag=True,
+    default=False,
+    help="overwrite contents of output directory. if not used, will raise an error if the output dir exists"
+)
 def split(
     trackname,
     output,
     length,
     dev,
     nchunks,
-    nchannels
+    nchannels,
+    overwrite
 ):
     """
     command line interface for aura.split: generate `nchunks` random chunks of `length` seconds (+/- `dev` standard deviation) from track `trackname` and write them to `output`
@@ -70,7 +78,8 @@ def split(
         length=length,
         dev=dev,
         nchunks=nchunks,
-        nchannels=nchannels
+        nchannels=nchannels,
+        overwrite=overwrite
     ).pipeline()
 
 

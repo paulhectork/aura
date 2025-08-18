@@ -34,3 +34,6 @@ def write(fp:Path|str, data:NDArray) -> None:
     # other params tbd
     raise NotImplementedError
 
+def make_dir(output: str|Path, overwrite:bool) -> Path:
+    output
+    dir_exists =
