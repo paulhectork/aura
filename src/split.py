@@ -8,7 +8,7 @@ from scipy.stats import truncnorm
 
 from track import Track
 from utils.io_op import make_dir
-from utils.utils import seconds_to_frame, get_chunk_ends
+from utils.utils import seconds_to_frame, get_chunk_ends, trailing_zeroes
 from utils.validate import validate_isint, validate_isfloat, validate_isinlist, validate_islt
 
 class Split:
@@ -78,13 +78,14 @@ class Split:
         self.make_chunk_pos().make_chunks().write_chunks()
         return self
 
-    def to_outpath(self, n:int) -> Path:
+    def to_outpath(self, i:int) -> Path:
         """
         generate an outpath track name for a chunk
-        :param n: the position of this chunk in the `self.chunk` array
+        :param i: the position of this chunk in the `self.chunk` array
         """
+        i = trailing_zeroes(i, self.nchunks)  # pyright:ignore
         basename_in = re.sub(r"\.[^\.]+$", "", self.track.trackpath.name)  # pyright: ignore . file name without path and extension
-        return self.outpath.joinpath(f"{basename_in}_chunk{n}.wav")
+        return self.outpath.joinpath(f"{basename_in}_chunk{i}.wav")
 
     def make_chunk_pos(self):
         """
@@ -144,6 +145,7 @@ class Split:
         # 3: extract the chunk positions
         # [ [start1,end1], [start2,end2], ... ]
         self.chunk_pos = np.transpose(np.vstack([chunk_starts, chunk_ends])).astype(int)
+        assert self.chunk_pos.shape[0] == self.nchunks, f"chunk_pos: {self.chunk_pos.shape[0]}, {self.nchunks}"
         return self
 
 
