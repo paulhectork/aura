@@ -48,7 +48,7 @@ def envelope():
     help="number of samples to generate (if None, tracklength / length)"
 )
 @click.option(
-    "-c", "--channels",
+    "-c", "--nchannels",
     type=click.Choice([1,2]),
     default=None,
     help="number of channels in output tracks"
@@ -59,10 +59,10 @@ def split(
     length,
     dev,
     nchunks,
-    channels
+    nchannels
 ):
     """
-    command line interface for aura.split
+    command line interface for aura.split: generate `nchunks` random chunks of `length` seconds (+/- `dev` standard deviation) from track `trackname` and write them to `output`
     """
     Split(
         trackname=trackname,
@@ -70,7 +70,7 @@ def split(
         length=length,
         dev=dev,
         nchunks=nchunks,
-        nchannels=channels
+        nchannels=nchannels
     )
 
 
