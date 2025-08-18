@@ -9,7 +9,7 @@ from scipy.stats import truncnorm
 from track import Track
 from utils.io_op import make_dir
 from utils.utils import seconds_to_frame, get_chunk_ends, trailing_zeroes
-from utils.validate import validate_type, validate_isinlist, validate_islt
+from utils.validate import validate_type, validate_isinlist, validate_comparison
 
 class Split:
 
@@ -42,7 +42,7 @@ class Split:
             nchunks = validate_type(nchunks, int)
         if dev is not None:
             dev = validate_type(dev, float)
-            validate_islt(dev, length)
+            validate_comparison("lt", dev, length)
         if nchannels is not None:
             nchannels = validate_type(nchannels, int)
             validate_isinlist(nchannels, [1, 2])

@@ -1,26 +1,15 @@
 import os
-from typing import List, Any
-
+import operator
 from pathlib import Path
+from typing import List, Any, Literal
 
+ALLOWED_OPS = ["eq","gt","ge","lt","le"]
 
 def validate_points(role: str, p:int):
     if not isinstance(p, float):
         raise TypeError(f"invalid type for '{role}': expected 'float', got '{type(p)}' (value '{p}')")
     if p < 0 or p > 1:
         raise ValueError(f"invalid value for '{role}': should be between 0 and 1, got '{p}'")
-
-# def validate_isfloat(i) -> None:
-#     if not isinstance(i, float):
-#         raise TypeError(f"invalid type: expected 'float', got '{type(i)}'")
-
-# def validate_isint(i) -> None:
-#     if not isinstance(i, int):
-#         raise TypeError(f"invalid type: expected 'int', got '{type(i)}'")
-
-# def validate_isbool(i) -> None:
-#     if not isinstance(i, bool):
-#         raise TypeError(f"invalid type: expected 'bool', got '{type(i)}'")
 
 def validate_type(i, type_) -> Any:
     """
@@ -33,29 +22,23 @@ def validate_type(i, type_) -> Any:
             raise TypeError(f"invalid type: expected '{type_}', got '{type(i)}' (and could not cast to type {type_})")
     return i
 
+def validate_comparison(opname: Literal["eq","gt","ge","lt","le"], a:Any,b:Any) -> None:
+    """general function to ensure that a and b validate a certain comparison (a<b...)"""
+    if opname not in ALLOWED_OPS:
+        raise ValueError(f"invalid value for 'op': '{opname}'. expected one of '{ALLOWED_OPS}'")
+    op = {
+        "gt": operator.gt,
+        "ge": operator.ge,
+        "eq": operator.eq,
+        "lt": operator.lt,
+        "le": operator.le,
+    }[opname]
+    if not op(a, b):
+        raise ValueError(f"failed comparison: expected a<'{opname}'>b (a={a}, b={b})")
+
 def validate_isinlist(i, vallist: List) -> None:
     if i not in vallist:
         raise ValueError(f"invalid value: expected one of {vallist}, got '{i}'")
-
-def validate_iseq(a, b):
-    if not a == b:
-        raise ValueError(f"expected a==b (a={a}, b={b})")
-
-def validate_islt(a, b):
-    if not a < b:
-        raise ValueError(f"expected a<b (a={a}, b={b})")
-
-def validate_isle(a, b):
-    if not a <= b:
-        raise ValueError(f"expected a<=b (a={a}, b={b})")
-
-def validate_isgt(a, b):
-    if not a > b:
-        raise ValueError(f"expected a>b (a={a}, b={b})")
-
-def validate_isge(a, b):
-    if not a >= b:
-        raise ValueError(f"expected a>=b (a={a}, b={b})")
 
 def validate_isinrange(
     i: float|int,
