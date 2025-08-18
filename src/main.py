@@ -68,7 +68,7 @@ def envelope():
     help="number of channels in output tracks (1=mono, 2=stereo). if None, same as number of channels in input track"
 )
 @click.option(
-    '-w', "--overwrite",
+    '-W', "--overwrite",
     type=click.BOOL,
     is_flag=True,
     default=False,
@@ -138,7 +138,7 @@ def split(
 @click.option(
     "-w", "--width",
     type=click.FloatRange(0,1),
-    default=1,
+    default=1.,
     help=r"streo width (no effect if 'nchannels==1'): if '1', tracks will be panned to 100% left/right, if '0.3', tracks will be panned to 30% of left/right"
 )
 @click.option(
@@ -157,6 +157,11 @@ def split(
     type=click.FLOAT,
     help="interval in seconds at which to repeat 'pattern'. must be shorter than 'pattern''s length"
 )
+@click.option(
+    "-W", "--overwrite",
+    type=click.BOOL,
+    help="overwrite output file 'outpath'"
+)
 def splice(
     trackspath,
     outpath,
@@ -167,7 +172,8 @@ def splice(
     width,
     mode,
     pattern,
-    repeat
+    repeat,
+    overwrite
 ):
     """
     command line interface for aura.splice: generate a track of `length` seconds by playing chunks in `trackspath` randomly `nimpulses` times and write it to `outpath`. it is possible to apply envelopes to the tracks, place them in stereo space, add a repeating pattern...
@@ -182,7 +188,8 @@ def splice(
         width=width,
         mode=mode,
         pattern=pattern,
-        repeat=repeat
+        repeat=repeat,
+        overwrite=overwrite
     )
 
 

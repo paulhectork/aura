@@ -27,18 +27,34 @@ def fp_to_abs_validate(fp:Path|str) -> Path:
     return fp
 
 
+def check_exists(fp:Path|str, overwrite:bool) -> Tuple[Path, bool]:
+    fp = fp_to_abs(fp)
+    exists = fp.exists()
+    if exists and not overwrite:
+        raise FileExistsError(f"file or directory directory '{fp}' exists. set 'overwrite' to 'True' to overwrite its contents.")
+    return fp, exists
+
+
+def check_exists_file(fp:Path|str, overwrite:bool) -> Tuple[Path, bool]:
+    """
+    check that if a path exists, and, if it should be overwritten (`overwrite=True`),
+    that the existing path points to a file, and not a directory
+    """
+    fp, exists = check_exists(fp, overwrite)
+    if exists and overwrite and not fp.is_file():
+        raise FileExistsError(f"path '{fp}' should not exist or be a file, but it is a directory")
+    return fp, exists
+
+
 def make_dir(dir_: str|Path, overwrite:bool) -> Path:
-    dir_ = fp_to_abs(dir_)
-    exists = dir_.exists()
+    dir_, exists = check_exists(dir_, overwrite)
     if not exists:
         dir_.mkdir()
     else:
-        if not overwrite:
-            raise FileExistsError(f"directory '{dir_}' exists. use '--overwrite' to overwrite its contents.")
-        else:
-            # empty directory contents qnd recreate it
-            shutil.rmtree(dir_)
-            dir_.mkdir()
+        # if overwrite==False, 'check_exists' will have raised => no need for extra checks
+        # empty directory contents qnd recreate it
+        shutil.rmtree(dir_)
+        dir_.mkdir()
     return dir_
 
 

@@ -9,7 +9,7 @@ from scipy.stats import truncnorm
 from track import Track
 from utils.io_op import make_dir
 from utils.utils import seconds_to_frame, get_chunk_ends, trailing_zeroes
-from utils.validate import validate_isint, validate_isfloat, validate_isinlist, validate_islt
+from utils.validate import validate_type, validate_isinlist, validate_islt
 
 class Split:
 
@@ -37,15 +37,14 @@ class Split:
         track = Track.read(trackpath)
         outpath = make_dir(outpath, overwrite)  # pyright: ignore
 
-        validate_isfloat(length)
+        length = validate_type(length, float)
         if nchunks is not None:
-            validate_isint(nchunks)
+            nchunks = validate_type(nchunks, int)
         if dev is not None:
-            validate_isfloat(dev)
+            dev = validate_type(dev, float)
             validate_islt(dev, length)
         if nchannels is not None:
-            validate_isint(nchannels)
-            nchannels = int(nchannels)  # pyright: ignore
+            nchannels = validate_type(nchannels, int)
             validate_isinlist(nchannels, [1, 2])
 
         # define defaults and do conversions
