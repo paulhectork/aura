@@ -17,7 +17,7 @@ class Splice:
     nchannels: int
     width: float
     mode: int|Literal["range"]
-    pattern: Track
+    pattern: Track|None
     patter_repeat: int
     overwrite: bool
     rate: int
@@ -40,9 +40,7 @@ class Splice:
         overwrite = validate_type(overwrite, bool)
         chunks = TrackList.read_from_dir(trackspath).to_mono()  # all tracks are converted to mono: the mono chunks will be placed in stereo space
         outpath, exists = check_exists_file(outpath, overwrite)
-        if pattern is not None:
-            pattern = Track.read(pattern)  # pyright: ignore
-
+        pattern_chunk = Track.read(pattern) if pattern is not None else None
         length = validate_type(length, float)
         try:
             nimpulses = validate_type(nimpulses, int)
@@ -73,7 +71,7 @@ class Splice:
         self.nchannels = nchannels
         self.width = width
         self.mode = mode
-        self.pattern = pattern
+        self.pattern = pattern_chunk
         self.pattern_repeat = seconds_to_frame(repeat, chunks.rate)  # pyright:ignore
         self.overwrite = overwrite
         self.rate = chunks.rate
