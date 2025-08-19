@@ -3,9 +3,10 @@ from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.signal import resample
 
 from utils.io_op import read, write, read_from_dir
-
+from utils.utils import frame_to_seconds, seconds_to_frame
 
 def get_nchannels(data:NDArray) -> int:
         if len(data.shape) == 1:
@@ -16,7 +17,7 @@ def get_nchannels(data:NDArray) -> int:
             raise ValueError(f"unexpected shape of data: expected (x,) or (x,y), got {data.shape}")
 
 
-class Track():
+class Track:
     def __init__(self, rate: int, data: NDArray, trackpath:Path|None = None):
         """
         :param rate: the sampling rate of the track
@@ -34,15 +35,6 @@ class Track():
         """read the file at `trackpath` into a `Track`"""
         (rate, data), trackpath = read(trackpath)
         return Track(rate, data, trackpath)
-
-    @classmethod
-    def read_from_dir(cls, trackspath: str|Path) -> List['Track']:
-        """read all wav files in a directory and return them as an array of tracks"""
-        return [
-            Track(rate, data, trackpath)
-            for ((rate, data), trackpath)
-            in read_from_dir(trackspath)
-        ]
 
 
     def write(self):
@@ -69,4 +61,61 @@ class Track():
         else:
             raise NotImplementedError(f"'to_stereo' conversion not implemented for number of channels: '{self.nchannels}'")
         return self
+
+    def resample(self, new_rate:int) -> 'Track':
+        """resample to a new rate"""
+        nframes = seconds_to_frame(
+            frame_to_seconds(self.nframes, self.rate),
+            new_rate
+        )
+        print(resample(self.data, nframes), type(resample(self.data, nframes)))
+        if new_rate != self.rate:
+            # number of frames of the output at `rate`
+            nframes = seconds_to_frame(
+                frame_to_seconds(self.nframes, self.rate),
+                new_rate
+            )
+            self.data = resample(self.data, nframes)
+            self.rate = new_rate
+            self.nframes = nframes
+        return self
+
+
+class TrackList:
+    tracklist: List[Track] = []
+    rate: int
+
+    def __init__(self, tracks: List[Track]):
+        self.tracklist = tracks
+        self.rate = self.get_best_rate()
+        self.homogenize_rate()
+
+    def get_best_rate(self):
+        if len(self.tracklist):
+            return max(t.rate for t in self.tracklist)
+        else:
+            raise ValueError("TrackList.tracklist is empty")
+
+    def homogenize_rate(self) -> 'TrackList':
+        """
+        resample all tracks in 'TrackList' to the highest rate among these tracks
+        """
+        tracklist = []
+        self.tracklist = [
+            #TODO why doesn't it print
+            t.resample(self.rate) for t in tracklist
+        ]
+        return self
+
+    @classmethod
+    def read_from_dir(cls, trackspath: str|Path) -> "TrackList":
+        """read all wav files in a directory and return them as an array of tracks"""
+        return TrackList([
+            Track(rate, data, trackpath)
+            for ((rate, data), trackpath)
+            in read_from_dir(trackspath)
+        ])
+
+
+
 

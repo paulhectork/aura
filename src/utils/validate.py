@@ -17,7 +17,7 @@ def validate_type(i, type_) -> Any:
     """
     if not isinstance(i, type_):
         try:
-            i = type(i)
+            i = type_(i)
         except TypeError:
             raise TypeError(f"invalid type: expected '{type_}', got '{type(i)}' (and could not cast to type {type_})")
     return i
@@ -47,9 +47,9 @@ def validate_isinrange(
     inclusive: bool=False
 ) -> None:
     expr = (
-       i < min_ or i > max_
-       if not inclusive
-       else i <= min_ or i >= max_
+       (i < min_ or i > max_)
+       if inclusive
+       else (i <= min_ or i >= max_)
     )
     if expr:
         raise ValueError(f"invalid value: should be in range ({min_},{max_}), got '{i}' (inclusive bounds: {inclusive})")

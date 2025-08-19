@@ -155,6 +155,7 @@ def split(
 @click.option(
     "-r", "--repeat",
     type=click.FLOAT,
+    default=10,
     help="interval in seconds at which to repeat 'pattern'. must be shorter than 'pattern''s length"
 )
 @click.option(

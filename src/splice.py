@@ -5,19 +5,19 @@ from utils.validate import validate_type, validate_comparison, validate_isinlist
 from utils.io_op import check_exists_file
 from utils.utils import seconds_to_frame
 from utils.constants import NO_SILENCE
-from track import Track
+from track import Track, TrackList
 
 class Splice:
 
-    chunks: List[Track]
+    chunks: TrackList
     outpath: Path
     length: int
-    nimpulses: int|"NO_SILENCE"
+    nimpulses: int|Literal["NO_SILENCE"]
     envelope: Any
     nchannels: int
     width: float
     mode: int|Literal["range"]
-    pattern: Path
+    pattern: Track
     patter_repeat: int
     overwrite: bool
     rate: int
@@ -27,18 +27,18 @@ class Splice:
         trackspath:str|Path,
         outpath:str|Path,
         length:float,
-        nimpulses:int|str=NO_SILENCE,
+        nimpulses:int|Literal["NO_SILENCE"]=NO_SILENCE,  # pyright:ignore
         envelope:str="random",
         nchannels:Literal[1,2]=2,
         width:float=1,
         mode:Literal[2,3,"range"]=2,
         pattern:str|None=None,
-        repeat:int|None=None,
+        repeat:float|None=10,
         overwrite:bool=False
     ):
         # validate data
         overwrite = validate_type(overwrite, bool)
-        chunks = Track.read_from_dir(trackspath)
+        chunks = TrackList.read_from_dir(trackspath)
         outpath, exists = check_exists_file(outpath, overwrite)
         if pattern is not None:
             pattern = Track.read(pattern)  # pyright: ignore
@@ -57,6 +57,8 @@ class Splice:
 
         if repeat is not None:
             repeat = validate_type(repeat, float)
+        elif pattern is not None:
+            repeat = float(10)
 
         ##########################################################
         #TODO `envelope`
@@ -65,15 +67,16 @@ class Splice:
 
         self.chunks = chunks
         self.outpath = outpath
-        self.length = seconds_to_frame(length, )
-        self.nimpulses = self.nimpulses
+        self.length = seconds_to_frame(length, chunks.rate)
+        self.nimpulses = nimpulses
         self.envelope = envelope
         self.nchannels = nchannels
         self.width = width
         self.mode = mode
         self.pattern = pattern
-        self.patter_repeat = repeat
+        self.pattern_repeat = seconds_to_frame(repeat, chunks.rate)  # pyright:ignore
         self.overwrite = overwrite
+        self.rate = chunks.rate
 
 
 
