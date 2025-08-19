@@ -1,6 +1,6 @@
 import os
 import shutil
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Tuple, List
 
 import numpy as np
@@ -14,7 +14,11 @@ CWD = Path(os.getcwd())
 
 def fp_to_abs(fp:Path|str) -> Path:
     """convert 'fp' to an absolute path"""
-    fp = Path(fp)
+    fp = (
+        Path(fp)
+        if not (isinstance(fp, PurePath) or isinstance(fp, Path))
+        else fp
+    )
     if not fp.is_absolute():
         fp = CWD.joinpath(fp)
     fp.resolve()

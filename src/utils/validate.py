@@ -1,4 +1,3 @@
-import os
 import operator
 from pathlib import Path
 from typing import List, Any, Literal
@@ -46,12 +45,12 @@ def validate_isinrange(
     max_: float|int,
     inclusive: bool=False
 ) -> None:
-    expr = (
-       (i < min_ or i > max_)
+    valid = (
+       (i <= min_ or i >= max_)
        if inclusive
-       else (i <= min_ or i >= max_)
+       else (i < min_ or i > max_)
     )
-    if expr:
+    if not valid:
         raise ValueError(f"invalid value: should be in range ({min_},{max_}), got '{i}' (inclusive bounds: {inclusive})")
 
 def validate_float_isinrange(

@@ -8,6 +8,7 @@ from scipy.signal import resample
 from utils.io_op import read, write, read_from_dir
 from utils.utils import frame_to_seconds, seconds_to_frame
 
+
 def get_nchannels(data:NDArray) -> int:
         if len(data.shape) == 1:
             return 1
@@ -41,6 +42,8 @@ class Track:
         """write `self` to `self.trackpath`"""
         if self.trackpath is None:
             raise ValueError(f"expected a path to write to, got '{self.trackpath}")
+        if self.data is None:
+            raise ValueError(f"expected data to write, got '{self.data}")
         write(self.trackpath, self.rate, self.data)
         return self
 
@@ -64,18 +67,15 @@ class Track:
 
     def resample(self, new_rate:int) -> 'Track':
         """resample to a new rate"""
-        nframes = seconds_to_frame(
-            frame_to_seconds(self.nframes, self.rate),
-            new_rate
-        )
-        print(resample(self.data, nframes), type(resample(self.data, nframes)))
         if new_rate != self.rate:
-            # number of frames of the output at `rate`
+            # scikit's `resample` resamples to a specific number of frames, not to a sampling rate
             nframes = seconds_to_frame(
                 frame_to_seconds(self.nframes, self.rate),
                 new_rate
             )
-            self.data = resample(self.data, nframes)
+            resampled: NDArray = resample(self.data, nframes)  # pyright: ignore
+            assert resampled.shape[0] == nframes, f"wrong number of resampled frames: expected {nframes}, got {resampled.shape[0]}"
+            self.data = resampled
             self.rate = new_rate
             self.nframes = nframes
         return self
@@ -87,8 +87,7 @@ class TrackList:
 
     def __init__(self, tracks: List[Track]):
         self.tracklist = tracks
-        self.rate = self.get_best_rate()
-        self.homogenize_rate()
+        self.resample()
 
     def get_best_rate(self):
         if len(self.tracklist):
@@ -96,20 +95,24 @@ class TrackList:
         else:
             raise ValueError("TrackList.tracklist is empty")
 
-    def homogenize_rate(self) -> 'TrackList':
+    def resample(self) -> 'TrackList':
         """
         resample all tracks in 'TrackList' to the highest rate among these tracks
         """
-        tracklist = []
+        best_rate = self.get_best_rate()
         self.tracklist = [
             #TODO why doesn't it print
-            t.resample(self.rate) for t in tracklist
+            t.resample(best_rate) for t in self.tracklist
         ]
+        self.rate = best_rate
+        return self
+
+    def to_mono(self) -> "TrackList":
+        self.tracklist = [ t.to_mono() for t in self.tracklist ]
         return self
 
     @classmethod
     def read_from_dir(cls, trackspath: str|Path) -> "TrackList":
-        """read all wav files in a directory and return them as an array of tracks"""
         return TrackList([
             Track(rate, data, trackpath)
             for ((rate, data), trackpath)

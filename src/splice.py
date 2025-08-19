@@ -38,7 +38,7 @@ class Splice:
     ):
         # validate data
         overwrite = validate_type(overwrite, bool)
-        chunks = TrackList.read_from_dir(trackspath)
+        chunks = TrackList.read_from_dir(trackspath).to_mono()  # all tracks are converted to mono: the mono chunks will be placed in stereo space
         outpath, exists = check_exists_file(outpath, overwrite)
         if pattern is not None:
             pattern = Track.read(pattern)  # pyright: ignore

@@ -13,14 +13,14 @@ def seconds_to_frame(time:float, rate:int) -> int:
     return round(time * rate)
 
 
-def frame_to_seconds(frame: int, rate:int) -> int:
+def frame_to_seconds(frame: int, rate:int) -> float:
     """
     convert a frame at a given rate to a time in seconds
 
     :param frame: frame in a given rate
     :param rate: the sample rate of frame
     """
-    return round(frame / rate)
+    return frame / rate
 
 
 def get_chunk_ends(chunk_starts: NDArray, chunk_lengths: NDArray) -> NDArray:
