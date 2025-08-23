@@ -46,7 +46,7 @@ def validate_isinrange(
     inclusive: bool=False
 ) -> None:
     valid = (
-       (i <= min_ or i >= max_)
+       (i >= min_ or i <= max_)
        if inclusive
        else (i < min_ or i > max_)
     )

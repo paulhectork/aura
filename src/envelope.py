@@ -5,10 +5,15 @@ import random
 import json
 import re
 
-from .utils.validate import validate_float_isinrange, validate_type
-from .utils.io_op import fp_to_abs_validate
+from utils.validate import validate_float_isinrange, validate_type
+from utils.io_op import fp_to_abs_validate
 
 class Envelope:
+
+    #NOTE a possible optimisation would be to internally represent the envelope as a 2D matrix of shape:
+    # >>> [ [0, a_t, d_t, s_1, 1],    # start-attack-decay-sustain-end time, 0..1
+    # ...   [0,   a,   d,   d, 0] ]   # start-attack-decay-sustain-end volumes, 0..1
+    # and then do numpy operations.
 
     curves_allowed = ["linear"]
     curves_default = "linear"
@@ -54,7 +59,7 @@ class Envelope:
         """
         generate an envelope with random values
         """
-        a_t, d_t, s_t = sorted([ random.random() for _ in range(0,2) ])
+        a_t, d_t, s_t = sorted([ random.random() for _ in range(0,3) ])
         return Envelope(
             a=1,
             d=random.uniform(0.5, 1.),
@@ -103,8 +108,8 @@ class EnvelopeList:
     envlist: List[Envelope]
 
     def __init__(self, envlist:List[Envelope]):
-        assert all(isinstance(env, Envelope) for env in envlist), \
-            f"all items from 'envlist' must belong to class 'Envelope', got {set(type(env) for env in envlist)}"
+        for env in envlist:
+            validate_type(env, Envelope)
         self.envlist = envlist
 
     @classmethod
@@ -119,6 +124,22 @@ class EnvelopeList:
         ])
 
     @classmethod
+    def from_list(cls, envlist:List[Dict]) -> "EnvelopeList":
+        envlist = validate_type(envlist, list)
+        return EnvelopeList([
+            Envelope.from_dict(env)
+            for env in envlist
+        ])
+
+    def to_list(self) -> List[Dict]:
+        """
+        convert EnvelopeList as a List of Dicts
+        """
+        return [
+            env.to_dict() for env in self.envlist
+        ]
+
+    @classmethod
     def read(cls, fp: str|Path) -> 'EnvelopeList':
         fp = fp_to_abs_validate(fp)
 
@@ -128,22 +149,17 @@ class EnvelopeList:
         with open(fp, mode="r") as fh:
             data = str(fh.read())
         try:
-            envlist_dict = json.loads(data)
-            if isinstance(envlist_dict, dict):
-                envlist_dict = [envlist_dict]
+            envlist_list = json.loads(data)
+            if isinstance(envlist_list, dict):  # there's only 1 item => turn it to a list
+                envlist_list = [envlist_list]
         except json.JSONDecodeError:
-            envlist_dict = [
+            envlist_list = [
                 literal_eval(l)
                 for l in data.split("\n")
                 if not empty_line.search(l)
             ]
 
-        envlist = [
-            Envelope.from_dict(env)
-            for env in envlist_dict
-        ]
-
-        return EnvelopeList(envlist)
+        return EnvelopeList.from_list(envlist_list)
 
     def write(self):
         raise NotImplementedError

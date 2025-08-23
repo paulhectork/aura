@@ -6,6 +6,7 @@ from utils.io_op import check_exists_file
 from utils.utils import seconds_to_frame
 from utils.constants import NO_SILENCE
 from track import Track, TrackList
+from envelope import Envelope, EnvelopeList
 
 class Splice:
 
@@ -75,6 +76,8 @@ class Splice:
         self.pattern_repeat = seconds_to_frame(repeat, chunks.rate)  # pyright:ignore
         self.overwrite = overwrite
         self.rate = chunks.rate
+
+        print(EnvelopeList.random().to_list())
 
 
 
