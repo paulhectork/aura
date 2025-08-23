@@ -82,6 +82,7 @@ class Track:
 
 
 class TrackList:
+
     tracklist: List[Track] = []
     rate: int
 
