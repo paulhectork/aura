@@ -7,6 +7,7 @@ from scipy.signal import resample
 
 from utils.io_op import read, write, read_from_dir
 from utils.utils import frame_to_seconds, seconds_to_frame
+from utils.validate import validate_type, validate_float_isinrange, validate_comparison
 
 
 def get_nchannels(data:NDArray) -> int:
@@ -79,6 +80,36 @@ class Track:
             self.rate = new_rate
             self.nframes = nframes
         return self
+
+    def get_frame_index(self, pct:float, validate_off:bool=False) -> int:
+        """
+        return the frame number that corresponds to the position `pct`
+
+        :param pct: percentage of track duration, in range 0..1 (0= 1st frame in the track, 1=last frame in the track)
+        :param validate_off: disable type validation
+        """
+        if not validate_off:
+            validate_type(self.data, NDArray)
+            validate_float_isinrange(pct, 0, 1, inclusive=True)
+        return round(pct * self.data.shape[0])  # ex: 30000 frames in a track => get_frame_index(0.5) -> 15000
+
+
+    def get_range(self, pct_start:float, pct_end=0) -> NDArray:
+        """
+        return a percentage of `self.data`.
+
+        :param pct_start: selection start in a 0..1 range (0=start of track, 1=end of track)
+        :param pct_end: selection end in a 0..1 range (0=start of track, 1=end of track)
+        """
+        validate_type(self.data, NDArray)
+        for pct in (pct_start, pct_end):
+            validate_float_isinrange(pct, 0, 1, inclusive=True)
+        validate_comparison("lt", pct_start, pct_end)
+
+        frame_start = self.get_frame_index(pct_start, True)
+        frame_end = self.get_frame_index(pct_end, True)
+
+        return self.data[frame_start:frame_end]
 
 
 class TrackList:

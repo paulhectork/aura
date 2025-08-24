@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import Tuple, List, Dict, Callable
 from ast import literal_eval
 from pathlib import Path
 import random
@@ -7,6 +7,21 @@ import re
 
 from utils.validate import validate_float_isinrange, validate_type
 from utils.io_op import fp_to_abs_validate
+from track import Track
+
+
+def to_linear_function(a: Tuple[int, float], b: Tuple[int, float]) -> Callable[[int], float|float]:
+    """
+    generate a linear function from 2 points a and b.
+    adapted from: https://www.geogebra.org/m/mdxgkgtd
+    """
+    a_x, a_y = a
+    b_x, b_y = b
+    slope = (b_y - a_y) / (b_x - a_x)
+    intercept = a_y - slope * a_x  # y-offset when x=0. `slope * a_x` = the value of `a_y` if `intercept==0` => from there, we can calculate the intercept.
+    return lambda x: x*slope + intercept
+
+
 
 class Envelope:
 
@@ -101,6 +116,12 @@ class Envelope:
             "s_t": self.s_t,
             "curve": self.curve
         }
+
+    def apply(self, track: Track) -> Track:
+        """
+        apply an envelope to a Track
+        """
+
 
 
 class EnvelopeList:
