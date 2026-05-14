@@ -1,3 +1,6 @@
+import functools
+from typing import Callable
+
 import click
 
 from src.split import Split
@@ -17,6 +20,22 @@ class IntOrStrType(click.ParamType):
                 self.fail("{value!r} could not be converted to 'int' or 'str'", param, ctx)
 INT_OR_STR = IntOrStrType()
 
+
+# adds an option -W --overwrite that checks wether or not you can overwrite output data.
+def overwrite_option(func:Callable) -> Callable:
+    @click.option(
+        '-W', "--overwrite",
+        type=click.BOOL,
+        is_flag=True,
+        default=False,
+        help="overwrite contents of output. if not used, will raise an error if the output dir or file exists"
+    )
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
+
+
 @click.group()
 def cli():
     """
@@ -25,6 +44,7 @@ def cli():
 
 
 @cli.command()
+@overwrite_option
 def envelope():
     """
     command line interface for aura.envelope
@@ -66,13 +86,7 @@ def envelope():
     default=None,
     help="number of channels in output tracks (1=mono, 2=stereo). if None, same as number of channels in input track"
 )
-@click.option(
-    '-W', "--overwrite",
-    type=click.BOOL,
-    is_flag=True,
-    default=False,
-    help="overwrite contents of output directory. if not used, will raise an error if the output dir exists"
-)
+@overwrite_option
 def split(
     trackpath,
     outpath,
@@ -156,11 +170,7 @@ def split(
     default=10,
     help="interval in seconds at which to repeat 'pattern'. must be shorter than 'pattern''s length"
 )
-@click.option(
-    "-W", "--overwrite",
-    type=click.BOOL,
-    help="overwrite output file 'outpath'"
-)
+@overwrite_option
 def splice(
     trackspath,
     outpath,

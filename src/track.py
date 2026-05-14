@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import resample
 
-from src.utils.io_op import read, write, read_from_dir
+from src.utils.io_op import read_wav, write_wav, read_wav_from_dir
 from src.utils.utils import frame_to_seconds, seconds_to_frame
 from src.utils.validate import validate_type, validate_float_isinrange, validate_comparison
 
@@ -34,7 +34,7 @@ class Track:
     @classmethod
     def read(cls, trackpath: str|Path) -> 'Track':
         """read the file at `trackpath` into a `Track`"""
-        (rate, data), trackpath = read(trackpath)
+        (rate, data), trackpath = read_wav(trackpath)
         return Track(rate, data, trackpath)
 
 
@@ -44,7 +44,7 @@ class Track:
             raise ValueError(f"expected a path to write to, got '{self.trackpath}")
         if self.data is None:
             raise ValueError(f"expected data to write, got '{self.data}")
-        write(self.trackpath, self.rate, self.data)
+        write_wav(self.trackpath, self.rate, self.data)
         return self
 
     def to_mono(self):
@@ -132,7 +132,6 @@ class TrackList:
         """
         best_rate = self.get_best_rate()
         self.tracklist = [
-            #TODO why doesn't it print
             t.resample(best_rate) for t in self.tracklist
         ]
         self.rate = best_rate
@@ -147,7 +146,7 @@ class TrackList:
         return TrackList([
             Track(rate, data, trackpath)
             for ((rate, data), trackpath)
-            in read_from_dir(trackspath)
+            in read_wav_from_dir(trackspath)
         ])
 
 

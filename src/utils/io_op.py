@@ -1,7 +1,8 @@
 import os
+import json
 import shutil
 from pathlib import Path, PurePath
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 
 import numpy as np
 from numpy.typing import NDArray
@@ -53,7 +54,7 @@ def check_exists_file(fp:Path|str, overwrite:bool) -> Tuple[Path, bool]:
 def make_dir(dir_: str|Path, overwrite:bool) -> Path:
     dir_, exists = check_exists(dir_, overwrite)
     if not exists:
-        dir_.mkdir()
+        dir_.mkdir(parents=True)
     else:
         # if overwrite==False, 'check_exists' will have raised => no need for extra checks
         # empty directory contents qnd recreate it
@@ -62,15 +63,16 @@ def make_dir(dir_: str|Path, overwrite:bool) -> Path:
     return dir_
 
 
-def read(fp:Path|str) -> Tuple[Tuple[int, NDArray], Path]:
+def read_wav(fp:Path|str) -> Tuple[Tuple[int, NDArray], Path]:
     fp = fp_to_abs_validate(fp)
     return wavfile.read(fp), fp
 
 
-def write(fp:Path|str, rate:int, data:NDArray) -> None:
+def write_wav(fp:Path|str, rate:int, data:NDArray) -> None:
     return wavfile.write(fp, rate, data)
 
-def read_from_dir(dp:str|Path) ->  List[Tuple[Tuple[int, NDArray], Path]]:
+
+def read_wav_from_dir(dp:str|Path) ->  List[Tuple[Tuple[int, NDArray], Path]]:
     """
     :returns: [ ((rate1, data1), fp1), ((rate2, data2), fp2), ... ]
     """
@@ -81,10 +83,24 @@ def read_from_dir(dp:str|Path) ->  List[Tuple[Tuple[int, NDArray], Path]]:
     tracklist = []
     for fp in fp_list:
         try:
-            tracklist.append(read(fp))
+            tracklist.append(read_wav(fp))
         except ValueError:
             print(f"skipping non-sound file '{fp}'")
     if not len(tracklist):
         raise ValueError(f"directory should contain at least one sound file (directory='{dp}', contents='{fp_list}')")
 
     return tracklist
+
+def write_json(fp:Path|str, data:Dict|List) -> None:
+    with open(fp, mode="w") as fh:
+        json.dump(data, fh)
+
+def write_str(fp:Path|str, data:str) -> None:
+    with open(fp, mode="w") as fh:
+        fh.write(data)
+
+def read_str(fp:Path|str) -> str:
+    with open(fp, mode="r") as fh:
+        t = fh.read()
+    return str(t)
+

@@ -1,7 +1,7 @@
 from typing import Literal, List, Tuple, Any
 from pathlib import Path
 
-from src.utils.validate import validate_type, validate_comparison, validate_isinlist, validate_float_isinrange
+from src.utils.validate import validate_type, validate_comparison, validate_isinlist, validate_float_isinrange, validate_pretty
 from src.utils.io_op import check_exists_file
 from src.utils.utils import seconds_to_frame
 from src.utils.constants import NO_SILENCE
@@ -38,33 +38,34 @@ class Splice:
         overwrite:bool=False
     ):
         # validate data
-        overwrite = validate_type(overwrite, bool)
+        overwrite = validate_pretty("overwrite", validate_type, i=overwrite, type_=bool)
         chunks = TrackList.read_from_dir(trackspath).to_mono()  # all tracks are converted to mono: the mono chunks will be placed in stereo space
         outpath, exists = check_exists_file(outpath, overwrite)
         pattern_chunk = Track.read(pattern) if pattern is not None else None
-        length = validate_type(length, float)
+        length = validate_pretty("length", validate_type, i=length, type_=float)
         try:
-            nimpulses = validate_type(nimpulses, int)
+            nimpulses = validate_pretty("nimpulses", validate_type, i=nimpulses, type_=int)
         except ValueError:
-            validate_comparison("eq", nimpulses, NO_SILENCE)
-        validate_isinlist(nchannels, [1,2])
-        validate_float_isinrange(width, 0, 1, inclusive=True)
-        validate_isinlist(mode, [2,3,"range"])  #NOTE mode has no effect if 'nchannels' != 2
+            validate_pretty("nimpulses", validate_comparison, "eq", a=nimpulses, b=NO_SILENCE)
+        #NOTE mode has no effect if 'nchannels' != 2
+        validate_pretty("mode", validate_isinlist, i=mode, vallist=[2,3,"range"])
+        validate_pretty("nchannels", validate_isinlist, i=nchannels, vallist=[1,2])
+        validate_pretty("width", validate_float_isinrange, i=width, min_=0, max_=1, inclusive=True)
 
         if nchannels == 1:
             width = 0.
 
         if repeat is not None:
-            repeat = validate_type(repeat, float)
+            repeat = validate_pretty("repeat", validate_type, i=repeat, type_=float)
         elif pattern is not None:
-            repeat = float(10)
+            repeat = 10.0
 
         ##########################################################
         #TODO `envelope`
         #TODO extract highest rate from `chunks` and normalize all chunks to the same rate
         ##########################################################
 
-        self.chunks = chunks
+        self.chunks = chunks.resample()
         self.outpath = outpath
         self.length = seconds_to_frame(length, chunks.rate)
         self.nimpulses = nimpulses
@@ -77,7 +78,7 @@ class Splice:
         self.overwrite = overwrite
         self.rate = chunks.rate
 
-        print(EnvelopeList.random().to_list())
+        # print(EnvelopeList.random().to_list())
 
 
 
