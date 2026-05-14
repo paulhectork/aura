@@ -4,9 +4,8 @@ from typing import Callable
 import click
 
 from src.split import Split
-from src.splice import Splice
+from src.splice import Splice, NO_SILENCE
 from src.envelope import random_envs_to_file
-from src.utils.constants import NO_SILENCE
 
 class IntOrStrType(click.ParamType):
     name = "int or str"
@@ -132,12 +131,6 @@ def split(
     required=True,
 )
 @click.option(
-    "-o", "--outpath",
-    type=click.STRING,
-    required=True,
-    help="path to the output file"
-)
-@click.option(
     "-l", "--length",
     type=click.INT,
     required=True,
@@ -154,7 +147,7 @@ def split(
     "-e", "--envelope",
     type=click.STRING,
     default=None,
-    help="evelope(s) to process the chunks. accepted value are 'random' (to use randomly generated envelopes), '<path to envelope file>' (to use user-defined envelopes)"
+    help="evelope(s) to process the chunks. accepted value are 'random' (to use randomly generated envelopes), '<path to envelope file>' (to use user-defined envelopes). If not provided, no envelope will be applied to the chunks."
 )
 @click.option(
     "-c", "--nchannels",
@@ -214,7 +207,7 @@ def splice(
         pattern=pattern,
         repeat=repeat,
         overwrite=overwrite
-    )
+    ).pipeline()
 
 
 if __name__ == "__main__":

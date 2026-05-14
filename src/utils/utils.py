@@ -1,3 +1,6 @@
+from typing import List
+import random
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -38,3 +41,6 @@ def trailing_zeroes(i:int, total:int)-> str:
     # add trailing zeroes to `i` for prettier filename formatting
     num_zeroes = len(str(total)) - len(str(i))
     return f"{'0'*num_zeroes}{i}"
+
+def get_random_item(l: List):
+    return random.choice(l)

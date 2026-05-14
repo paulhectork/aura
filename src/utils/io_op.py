@@ -5,7 +5,6 @@ from pathlib import Path, PurePath
 from typing import Tuple, List, Dict
 
 import numpy as np
-from numpy.typing import NDArray
 from scipy.io import wavfile
 
 from .validate import validate_path_exists
@@ -63,16 +62,16 @@ def make_dir(dir_: str|Path, overwrite:bool) -> Path:
     return dir_
 
 
-def read_wav(fp:Path|str) -> Tuple[Tuple[int, NDArray], Path]:
+def read_wav(fp:Path|str) -> Tuple[Tuple[int, np.ndarray], Path]:
     fp = fp_to_abs_validate(fp)
     return wavfile.read(fp), fp
 
 
-def write_wav(fp:Path|str, rate:int, data:NDArray) -> None:
+def write_wav(fp:Path|str, rate:int, data:np.ndarray) -> None:
     return wavfile.write(fp, rate, data)
 
 
-def read_wav_from_dir(dp:str|Path) ->  List[Tuple[Tuple[int, NDArray], Path]]:
+def read_wav_from_dir(dp:str|Path) ->  List[Tuple[Tuple[int, np.ndarray], Path]]:
     """
     :returns: [ ((rate1, data1), fp1), ((rate2, data2), fp2), ... ]
     """

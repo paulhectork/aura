@@ -4,9 +4,12 @@ from pathlib import Path
 from src.utils.validate import validate_type, validate_comparison, validate_isinlist, validate_float_isinrange, validate_pretty
 from src.utils.io_op import check_exists_file
 from src.utils.utils import seconds_to_frame
-from src.utils.constants import NO_SILENCE
 from src.track import Track, TrackList
 from src.envelope import Envelope, EnvelopeList
+
+NO_SILENCE = "no-silence"
+ENV_RANDOM = "random"
+ENV_NONE = None
 
 class Splice:
 
@@ -14,7 +17,7 @@ class Splice:
     outpath: Path
     length: int
     nimpulses: int|Literal["NO_SILENCE"]
-    envelope: Any
+    envelope: EnvelopeList|Literal["random"]|None
     nchannels: int
     width: float
     mode: int|Literal["range"]
@@ -29,7 +32,7 @@ class Splice:
         outpath:str|Path,
         length:float,
         nimpulses:int|Literal["NO_SILENCE"]=NO_SILENCE,  # pyright:ignore
-        envelope:str="random",
+        envelope:str|None=ENV_NONE,
         nchannels:Literal[1,2]=2,
         width:float=1,
         mode:Literal[2,3,"range"]=2,
@@ -39,7 +42,7 @@ class Splice:
     ):
         # validate data
         overwrite = validate_pretty("overwrite", validate_type, i=overwrite, type_=bool)
-        chunks = TrackList.read_from_dir(trackspath).to_mono()  # all tracks are converted to mono: the mono chunks will be placed in stereo space
+        chunks = TrackList.read_from_dir(trackspath)
         outpath, exists = check_exists_file(outpath, overwrite)
         pattern_chunk = Track.read(pattern) if pattern is not None else None
         length = validate_pretty("length", validate_type, i=length, type_=float)
@@ -60,16 +63,22 @@ class Splice:
         elif pattern is not None:
             repeat = 10.0
 
-        ##########################################################
-        #TODO `envelope`
-        #TODO extract highest rate from `chunks` and normalize all chunks to the same rate
-        ##########################################################
+        if envelope != ENV_RANDOM and envelope != ENV_NONE:
+            try:
+                envelope_data = EnvelopeList.read(envelope)  # pyright: ignore
+            except Exception as e:
+                raise e
+                print(f"could not read envelopes from file: {envelope}. File should contain the output of Envelope.to_dict()")
+                exit(1)
+        else:
+            envelope_data = envelope
 
-        self.chunks = chunks.resample()
+        # NOTE: all tracks are converted to mono: the mono chunks will be placed in stereo space
+        self.chunks = chunks.resample().to_mono()
         self.outpath = outpath
         self.length = seconds_to_frame(length, chunks.rate)
         self.nimpulses = nimpulses
-        self.envelope = envelope
+        self.envelope = envelope_data  # pyright: ignore
         self.nchannels = nchannels
         self.width = width
         self.mode = mode
@@ -77,8 +86,27 @@ class Splice:
         self.pattern_repeat = seconds_to_frame(repeat, chunks.rate)  # pyright:ignore
         self.overwrite = overwrite
         self.rate = chunks.rate
+        return
 
-        # print(EnvelopeList.random().to_list())
+    def get_chunk_apply_env(self) -> Track:
+        """
+        1. select a chunk and apply an env to it
+        NOTE: chunks and envs are selected and applied at random.
+        """
+        chunk = self.chunks.get_one()
+        if self.envelope == ENV_NONE:
+            return chunk
+        elif self.envelope == ENV_RANDOM:
+            return Envelope.random().apply(chunk)
+        elif isinstance(self.envelope, EnvelopeList):
+            return self.envelope.get_one().apply(chunk)
+        else:
+            raise ValueError(f"error selecting envelope strategy. `Splice.envelope` should be `None`, `'random'` or `EnvelopeList`, but is: {type(self.envelope)}")
 
+    def pipeline(self):
+        # NOTE: envs successfully applied !
+        # TODO: position chunks in space !
+        for _ in self.chunks.tracklist:
+            self.get_chunk_apply_env()
 
 

@@ -3,7 +3,6 @@ from pathlib import Path
 import re
 
 import numpy as np
-from numpy.typing import NDArray
 from scipy.stats import truncnorm
 
 from src.track import Track
@@ -20,7 +19,7 @@ class Split:
     dev: float
     nchannels: Literal[1,2]
     split_all: bool
-    chunk_pos: NDArray
+    chunk_pos: np.ndarray
     chunks: List[Track]
 
     def __init__(

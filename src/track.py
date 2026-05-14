@@ -1,15 +1,15 @@
 from typing import Tuple, List
 from pathlib import Path
+import random
 
 import numpy as np
-from numpy.typing import NDArray
 from scipy.signal import resample
 
 from src.utils.io_op import read_wav, write_wav, read_wav_from_dir
-from src.utils.utils import frame_to_seconds, seconds_to_frame
+from src.utils.utils import frame_to_seconds, seconds_to_frame, get_random_item
 from src.utils.validate import validate_type, validate_float_isinrange, validate_comparison
 
-def get_nchannels(data:NDArray) -> int:
+def get_nchannels(data:np.ndarray) -> int:
         if len(data.shape) == 1:
             return 1
         elif len(data.shape) == 2:
@@ -19,10 +19,10 @@ def get_nchannels(data:NDArray) -> int:
 
 
 class Track:
-    def __init__(self, rate: int, data: NDArray, trackpath:Path|None = None):
+    def __init__(self, rate: int, data: np.ndarray, trackpath:Path|None = None):
         """
         :param rate: the sampling rate of the track
-        :param data: 1 or 2d NDArray containing the track
+        :param data: 1 or 2d np.ndarray containing the track
         :param trackpath: path to the track file (optional; a trackpath that does not exist on the filesystem may be provided, for example to use `Track` as an interface to write a new track to file)
         """
         self.nchannels = get_nchannels(data)
@@ -57,7 +57,7 @@ class Track:
         if self.nchannels == 2:
             pass
         elif self.nchannels == 1:
-            # convert ndarray of shape (x, 1) into ndarray of shape (x, 2): [ [l1,r1],[l2,r2], ... ]
+            # convert np.ndarray of shape (x, 1) into np.ndarray of shape (x, 2): [ [l1,r1],[l2,r2], ... ]
             self.data = self.data / 2
             self.data = np.transpose(np.vstack((self.data, self.data)))
             self.nchannels = 2
@@ -73,7 +73,7 @@ class Track:
                 frame_to_seconds(self.nframes, self.rate),
                 new_rate
             )
-            resampled: NDArray = resample(self.data, nframes)  # pyright: ignore
+            resampled: np.ndarray = resample(self.data, nframes)  # pyright: ignore
             assert resampled.shape[0] == nframes, f"wrong number of resampled frames: expected {nframes}, got {resampled.shape[0]}"
             self.data = resampled
             self.rate = new_rate
@@ -88,26 +88,25 @@ class Track:
         :param validate_off: disable type validation
         """
         if not validate_off:
-            validate_type(self.data, NDArray)
+            validate_type(self.data, np.ndarray)
             validate_float_isinrange(pct, 0, 1, inclusive=True)
         return round(pct * self.data.shape[0])  # ex: 30000 frames in a track => get_frame_index(0.5) -> 15000
 
 
-    def get_range(self, pct_start:float, pct_end=0) -> NDArray:
+    def get_range(self, pct_start:float, pct_end: float) -> np.ndarray:
         """
         return a percentage of `self.data`.
 
-        :param pct_start: selection start in a 0..1 range (0=start of track, 1=end of track)
-        :param pct_end: selection end in a 0..1 range (0=start of track, 1=end of track)
+        :param pct_start: selection start (inclusive) in a 0..1 range (0=start of track, 1=end of track)
+        :param pct_end: selection end (exclusive) in a 0..1 range (0=start of track, 1=end of track)
         """
-        validate_type(self.data, NDArray)
+        validate_type(self.data, np.ndarray)
         for pct in (pct_start, pct_end):
             validate_float_isinrange(pct, 0, 1, inclusive=True)
         validate_comparison("lt", pct_start, pct_end)
 
         frame_start = self.get_frame_index(pct_start, True)
         frame_end = self.get_frame_index(pct_end, True)
-
         return self.data[frame_start:frame_end]
 
 
@@ -140,6 +139,9 @@ class TrackList:
     def to_mono(self) -> "TrackList":
         self.tracklist = [ t.to_mono() for t in self.tracklist ]
         return self
+
+    def get_one(self) -> Track:
+        return get_random_item(self.tracklist)
 
     @classmethod
     def read_from_dir(cls, trackspath: str|Path) -> "TrackList":

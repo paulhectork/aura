@@ -1,10 +1,12 @@
-from typing import Tuple, List, Dict, Callable
-from ast import literal_eval
+from typing import Tuple, List, Dict, Callable, Literal
 from pathlib import Path
 import random
 import json
 import re
 
+import numpy as np
+
+from src.utils.utils import get_random_item
 from src.utils.validate import validate_comparison, validate_float_isinrange, validate_type
 from src.utils.io_op import fp_to_abs_validate, write_json, read_str, write_str, check_exists_file
 from src.track import Track
@@ -13,19 +15,21 @@ from src.track import Track
 def to_linear_function(a: Tuple[int|float, int|float], b: Tuple[int|float, int|float]) -> Callable[[int], float|float]:
     """
     generate a linear function from 2 points a and b.
+    this function will be a multiplier that will be applied to a track.
     adapted from: https://www.geogebra.org/m/mdxgkgtd
     """
-    a_x, a_y = a
-    b_x, b_y = b
-    slope = (b_y - a_y) / (b_x - a_x)
-    intercept = a_y - slope * a_x  # y-offset when x=0. `slope * a_x` = the value of `a_y` if `intercept==0` => from there, we can calculate the intercept.
+    x_a, y_a = a
+    x_b, y_b = b
+    slope = (y_b-y_a) / (x_b-x_a)
+    intercept = y_a - slope * x_a  # y-offset when x=0. `slope * x_a` = the value of `y_a` if `intercept==0` => from there, we can calculate the intercept.
+    # print(f"x: x*{slope} + {intercept}")
     return lambda x: x*slope + intercept
 
 
 class Envelope:
 
     #NOTE a possible optimisation would be to internally represent the envelope as a 2D matrix of shape:
-    # >>> [ [0, a_t, d_t, s_t],    # start-attack-decay-sustain-end time, 0..1
+    # >>> [ [0, a_t, d_t,   1],    # start-attack-decay-sustain-end time, 0..1
     # ...   [0,   a,   d,   0] ]   # start-attack-decay-sustain-end volumes, 0..1
     # and then do numpy operations.
 
@@ -38,7 +42,6 @@ class Envelope:
         a_t:float,
         d:float,
         d_t:float,
-        s_t:float=0,
         curve: str|None = None
     ):
         """
@@ -46,26 +49,29 @@ class Envelope:
 
         volume is expressed in range 0..1: 0 = silent, 1 = 100% of track volume
         time is expressed in range 0..1: 0 = start of track, 1 = end of track
-        there is no sustain volume parameter: sustain volume is the same as decay volume
+
+        NOTE: attack starts at (0,0) (= start of track, silent) and sustain ends at (0,0) (end of track, silent).
+        the main reason is that the calculation and application of a multiplier function
+        gets much more complicated otherwise: the region where there is sound can be different
+        from the dimensions of the track...
 
         :param a: attack volume
         :param d: decay volume
         :param a_t: attack time
         :param d_t: decay time
-        :param s_t: sustain time
         :param curve: interpolation curve
         """
         try:
             # assert that all values are in 0..1 range
-            for v in [ a, d, a_t, d_t, s_t ]:
+            for v in [ a, d, a_t, d_t ]:
                 validate_float_isinrange(v, 0, 1, inclusive=True)
             # assert that times are correctly ordered
-            for x1, x2 in ((0,a_t), (a_t,d_t), (d_t,s_t), (s_t,1)):
+            for x1, x2 in ((0,a_t), (a_t,d_t), (d_t,1)):
                 assert x1<=x2
         except (AssertionError, ValueError):
             print(
-                "invalid envelope: expected 0 <= a_t <= d_t <= st <=1 and a <= 1 and s <= 1, got: {}"
-                .format(str({ a:a, a_t:a_t, d:d, d_t:d_t, s_t:s_t }))
+                "invalid envelope: expected 0 <= a_t <= d_t and a <= 1 and d <= 1, got: {}"
+                .format(json.dumps({ a:a, a_t:a_t, d:d, d_t:d_t }))
             )
 
         curve = self.curve_default if curve == None else curve
@@ -76,15 +82,12 @@ class Envelope:
         self.d = d
         self.a_t = a_t
         self.d_t = d_t
-        self.s_t = s_t
         self.curve = curve
 
-        # TODO do as a matrix multiplication or as a numpy interpolation ?
-        # https://numpy.org/doc/stable/reference/generated/numpy.interp.html
         if self.curve == "linear":
-            self.attack = to_linear_function((0,0), (a_t,a))
-            self.decay = to_linear_function((a_t,a), (d_t,d))
-            self.sustain = to_linear_function((d_t,d), (s_t,0))
+            self.attack_mul = to_linear_function((0,0), (a_t,a))
+            self.decay_mul = to_linear_function((a_t,a), (d_t,d))
+            self.sustain_mul = to_linear_function((d_t,d), (1,0))
         return
 
     @classmethod
@@ -92,13 +95,12 @@ class Envelope:
         """
         generate an envelope with random values
         """
-        a_t, d_t, s_t = sorted([ random.random() for _ in range(0,3) ])
+        a_t, d_t = sorted([ random.random() for _ in range(0,2) ])
         return Envelope(
             a=1,
             d=random.uniform(0.5, 1.),
             a_t=a_t,
             d_t=d_t,
-            s_t=s_t,
             curve=random.choice(cls.curves_allowed)
         )
 
@@ -108,7 +110,7 @@ class Envelope:
         load an envelope from a dict, with validation. useful when loading envelopes from file.
         to create an envelope without validation, use Envelope(**envelope_as_dict)
         """
-        all_attrs = [ "a", "d", "a_t", "d_t", "s_t", "curve" ]  # all allowed keys
+        all_attrs = [ "a", "d", "a_t", "d_t", "curve" ]  # all allowed keys
 
         env = validate_type(env, dict)
 
@@ -128,26 +130,63 @@ class Envelope:
             "d": self.d,
             "a_t": self.a_t,
             "d_t": self.d_t,
-            "s_t": self.s_t,
             "curve": self.curve
         }
 
     def write(self, path:str|Path):
         write_json(path, self.to_dict())
 
-    def apply_attack_interp(self, track: Track) -> Track:
-        i = track.get_frame_index(self.a_t, True)
-        return track
+    def get_mul_func(self, step_name: Literal["a","d","s"]) -> Callable:
+        if step_name == "a":
+            return self.attack_mul
+        elif step_name == "d":
+            return self.decay_mul
+        elif step_name == "s":
+            return self.sustain_mul
+        return
+
+    def apply_step(
+        self,
+        lin_func: Callable,
+        track_step: np.ndarray,
+        pct_start: float,
+        pct_end: float,
+    ) -> np.ndarray:
+        """
+        apply a single envelope step (attack/decay/sustain) to the relevant slice of a track.
+
+        :param lin_func: a function generated from plotting a line between 2 points
+        :param track_step: a slice of a numpy array
+        :param pct_start: the start of track_step within the entire track in range 0..1
+        :param pct_end: the end track_step within the entire track in range 0..1
+        """
+        indices = np.linspace(pct_start, pct_end, track_step.shape[0])
+        multipliers = lin_func(indices)  # lin_func is just slope*x + intercept, works on arrays natively
+        return track_step * multipliers
 
     def apply(self, track: Track) -> Track:
         """
         apply an envelope to a Track
         """
-        # todo
+
+        tracks = []
+        for step_name, pct_start, pct_end in [
+            (self.attack_mul, 0, self.a_t),
+            (self.decay_mul, self.a_t, self.d_t),
+            (self.sustain_mul, self.d_t, 1),
+        ]:
+            tracks.append(
+                self.apply_step(
+                    step_name,
+                    track.get_range(pct_start, pct_end),
+                    pct_start,
+                    pct_end
+                )
+            )
+        track.data = np.concat(tracks, axis=0)
         return track
 
 
-# TODO check for overwrites
 class EnvelopeList:
 
     envlist: List[Envelope]
@@ -206,8 +245,12 @@ class EnvelopeList:
 
     def write(self, fp:Path|str) -> 'EnvelopeList':
         check_exists_file(fp, self.overwrite)
-        write_str(fp, "\n".join(str(d) for d in self.to_list()))
+        write_str(fp, "\n".join(json.dumps(d) for d in self.to_list()))
         return self
+
+    def get_one(self) -> Envelope:
+        return get_random_item(self.envlist)
+
 
 def random_envs_to_file(n:int, fp: str|Path, overwrite: bool) -> None:
     envlist = EnvelopeList.random(n)
