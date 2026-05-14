@@ -1,12 +1,12 @@
 from typing import Literal, List, Tuple, Any
 from pathlib import Path
 
-from utils.validate import validate_type, validate_comparison, validate_isinlist, validate_float_isinrange
-from utils.io_op import check_exists_file
-from utils.utils import seconds_to_frame
-from utils.constants import NO_SILENCE
-from track import Track, TrackList
-from envelope import Envelope, EnvelopeList
+from src.utils.validate import validate_type, validate_comparison, validate_isinlist, validate_float_isinrange
+from src.utils.io_op import check_exists_file
+from src.utils.utils import seconds_to_frame
+from src.utils.constants import NO_SILENCE
+from src.track import Track, TrackList
+from src.envelope import Envelope, EnvelopeList
 
 class Splice:
 

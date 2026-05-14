@@ -6,10 +6,10 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import truncnorm
 
-from track import Track
-from utils.io_op import make_dir
-from utils.utils import seconds_to_frame, get_chunk_ends, trailing_zeroes
-from utils.validate import validate_type, validate_isinlist, validate_comparison
+from src.track import Track
+from src.utils.io_op import make_dir
+from src.utils.utils import seconds_to_frame, get_chunk_ends, trailing_zeroes
+from src.utils.validate import validate_type, validate_isinlist, validate_comparison
 
 class Split:
 

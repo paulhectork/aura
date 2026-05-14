@@ -1,9 +1,9 @@
 import unittest
 
-from envelope import Envelope
-from splice import Splice
-from split import Split
-from track import Track
+from src.envelope import Envelope
+from src.splice import Splice
+from src.split import Split
+from src.track import Track
 
 class TestEnvelope(unittest.TestCase):
     def setUp(self):

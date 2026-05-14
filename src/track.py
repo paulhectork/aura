@@ -5,9 +5,9 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import resample
 
-from utils.io_op import read, write, read_from_dir
-from utils.utils import frame_to_seconds, seconds_to_frame
-from utils.validate import validate_type, validate_float_isinrange, validate_comparison
+from src.utils.io_op import read, write, read_from_dir
+from src.utils.utils import frame_to_seconds, seconds_to_frame
+from src.utils.validate import validate_type, validate_float_isinrange, validate_comparison
 
 
 def get_nchannels(data:NDArray) -> int:

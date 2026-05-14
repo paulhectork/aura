@@ -5,9 +5,9 @@ import random
 import json
 import re
 
-from utils.validate import validate_float_isinrange, validate_type
-from utils.io_op import fp_to_abs_validate
-from track import Track
+from src.utils.validate import validate_float_isinrange, validate_type
+from src.utils.io_op import fp_to_abs_validate
+from src.track import Track
 
 
 def to_linear_function(a: Tuple[int, float], b: Tuple[int, float]) -> Callable[[int], float|float]:

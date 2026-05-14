@@ -1,8 +1,8 @@
 import click
 
-from split import Split
-from splice import Splice
-from utils.constants import NO_SILENCE
+from src.split import Split
+from src.splice import Splice
+from src.utils.constants import NO_SILENCE
 
 class IntOrStrType(click.ParamType):
     name = "int or str"
