@@ -5,7 +5,7 @@ import random
 import json
 import re
 
-from src.utils.validate import validate_float_isinrange, validate_type
+from src.utils.validate import validate_comparison, validate_float_isinrange, validate_type
 from src.utils.io_op import fp_to_abs_validate, write_json, read_str, write_str, check_exists_file
 from src.track import Track
 
@@ -85,7 +85,7 @@ class Envelope:
             self.attack = to_linear_function((0,0), (a_t,a))
             self.decay = to_linear_function((a_t,a), (d_t,d))
             self.sustain = to_linear_function((d_t,d), (s_t,0))
-        return self
+        return
 
     @classmethod
     def random(cls) -> 'Envelope':
@@ -164,9 +164,10 @@ class EnvelopeList:
         generate an EnvelopeList containing `n` random Envelopes
         """
         n = validate_type(n, int)
+        validate_comparison("lt", 0, n)
         return EnvelopeList([
             Envelope.random()
-            for _ in range(1, n)
+            for _ in range(1, n+1)
         ])
 
     @classmethod
@@ -208,4 +209,7 @@ class EnvelopeList:
         write_str(fp, "\n".join(str(d) for d in self.to_list()))
         return self
 
-
+def random_envs_to_file(n:int, fp: str|Path, overwrite: bool) -> None:
+    envlist = EnvelopeList.random(n)
+    envlist.overwrite = overwrite
+    envlist.write(fp)

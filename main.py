@@ -5,6 +5,7 @@ import click
 
 from src.split import Split
 from src.splice import Splice
+from src.envelope import random_envs_to_file
 from src.utils.constants import NO_SILENCE
 
 class IntOrStrType(click.ParamType):
@@ -21,14 +22,24 @@ class IntOrStrType(click.ParamType):
 INT_OR_STR = IntOrStrType()
 
 
-# adds an option -W --overwrite that checks wether or not you can overwrite output data.
-def overwrite_option(func:Callable) -> Callable:
+def common_options(func:Callable) -> Callable:
+    """
+    adds 2 options:
+    - an option -W --overwrite that checks whether or not you can overwrite output data.
+    - an option -o --out that defines an output path for the data
+    """
     @click.option(
         '-W', "--overwrite",
         type=click.BOOL,
         is_flag=True,
         default=False,
-        help="overwrite contents of output. if not used, will raise an error if the output dir or file exists"
+        help="overwrite contents of output. if not used, will raise an error if the output dir or file exists (default=False)"
+    )
+    @click.option(
+        "-o", "--outpath",
+        type=click.STRING,
+        required=True,
+        help="path to the output file or directory"
     )
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -44,11 +55,21 @@ def cli():
 
 
 @cli.command()
-@overwrite_option
-def envelope():
+@click.argument(
+    "n_env",
+    type=click.INT,
+    required=True
+)
+@common_options
+def envelope(
+    n_env: int,
+    outpath: str,
+    overwrite: bool
+):
     """
-    command line interface for aura.envelope
+    generate `n_env` random envelopes and write them to `outpath`
     """
+    random_envs_to_file(n_env, outpath, overwrite)
 
 
 @cli.command()
@@ -56,12 +77,6 @@ def envelope():
     "trackpath",
     type=click.STRING,
     required=True
-)
-@click.option(
-    "-o", "--outpath",
-    type=click.STRING,
-    required=True,
-    help="path to the output folder"
 )
 @click.option(
     "-l", "--length",
@@ -73,7 +88,7 @@ def envelope():
     "-d", "--dev",
     type=click.FLOAT,
     default=0,
-    help="length standard deviation, in seconds (defaults to 0)"
+    help="length of standard deviation, in seconds (defaults to 0)"
 )
 @click.option(
     "-n", "--nchunks",
@@ -86,7 +101,7 @@ def envelope():
     default=None,
     help="number of channels in output tracks (1=mono, 2=stereo). if None, same as number of channels in input track"
 )
-@overwrite_option
+@common_options
 def split(
     trackpath,
     outpath,
@@ -170,7 +185,7 @@ def split(
     default=10,
     help="interval in seconds at which to repeat 'pattern'. must be shorter than 'pattern''s length"
 )
-@overwrite_option
+@common_options
 def splice(
     trackspath,
     outpath,
