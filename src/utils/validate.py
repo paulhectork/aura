@@ -1,6 +1,6 @@
 import operator
 from pathlib import Path
-from typing import List, Any, Literal
+from typing import List, Any, Literal, Callable
 
 ALLOWED_OPS = ["eq","gt","ge","lt","le"]
 
@@ -33,7 +33,7 @@ def validate_comparison(opname: Literal["eq","gt","ge","lt","le"], a:Any,b:Any) 
         "le": operator.le,
     }[opname]
     if not op(a, b):
-        raise ValueError(f"failed comparison: expected a<'{opname}'>b (a={a}, b={b})")
+        raise ValueError(f"failed comparison: expected a '{opname}' b (a={a}, b={b})")
 
 def validate_isinlist(i, vallist: List) -> None:
     if i not in vallist:
@@ -66,3 +66,12 @@ def validate_float_isinrange(
 def validate_path_exists(fp:Path):
     if not fp.exists():
         raise FileNotFoundError(f"input file '{fp}' not found")
+
+
+def validate_pretty(param_name: str, validate_func: Callable, *args, **kwargs):
+    """metafunction to pretty-print an error message."""
+    try:
+        return validate_func(*args, **kwargs)
+    except Exception as e:
+        print(f"error validating parameter {param_name}. exiting... {getattr(e, 'message', repr(e))}")
+        exit(1)

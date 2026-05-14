@@ -9,7 +9,7 @@ from scipy.stats import truncnorm
 from src.track import Track
 from src.utils.io_op import make_dir
 from src.utils.utils import seconds_to_frame, get_chunk_ends, trailing_zeroes
-from src.utils.validate import validate_type, validate_isinlist, validate_comparison
+from src.utils.validate import validate_type, validate_isinlist, validate_comparison, validate_pretty
 
 class Split:
 
@@ -37,15 +37,15 @@ class Split:
         track = Track.read(trackpath)
         outpath = make_dir(outpath, overwrite)  # pyright: ignore
 
-        length = validate_type(length, float)
+        length = validate_pretty("length", validate_type, i=length, type_=float)
         if nchunks is not None:
-            nchunks = validate_type(nchunks, int)
+            nchunks = validate_pretty("nchunks", validate_type, i=nchunks, type_=int)
         if dev is not None:
-            dev = validate_type(dev, float)
-            validate_comparison("lt", dev, length)
+            dev = validate_pretty("dev", validate_type, i=dev, type_=float)
+            validate_pretty("dev", validate_comparison, opname="lt", a=dev, b=length)
         if nchannels is not None:
-            nchannels = validate_type(nchannels, int)
-            validate_isinlist(nchannels, [1, 2])
+            nchannels = validate_pretty("nchannels", validate_type, i=nchannels, type_=int)
+            validate_pretty("nchannels", validate_isinlist, i=nchannels, vallist=[1, 2])
 
         # define defaults and do conversions
         length = seconds_to_frame(length, track.rate)

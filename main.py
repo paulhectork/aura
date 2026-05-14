@@ -32,11 +32,10 @@ def envelope():
 
 
 @cli.command()
-@click.option(
-    "-t", "--trackpath",
+@click.argument(
+    "trackpath",
     type=click.STRING,
-    required=True,
-    help="path of the input track"
+    required=True
 )
 @click.option(
     "-o", "--outpath",
@@ -98,11 +97,10 @@ def split(
 
 
 @cli.command()
-@click.option(
-    "-t", "--trackspath",
+@click.argument(
+    "trackspath",
     type=click.STRING,
     required=True,
-    help="path to input directory. all `.wav` files in the directory (non-recrusvively) will be loaded as chunks to be used in the final track"
 )
 @click.option(
     "-o", "--outpath",
