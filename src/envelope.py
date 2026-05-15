@@ -6,11 +6,10 @@ import re
 
 import numpy as np
 
-from src.utils.utils import get_random_item
+from src.utils.utils import get_random_item, array_plot
 from src.utils.validate import validate_comparison, validate_float_isinrange, validate_type
 from src.utils.io_op import fp_to_abs_validate, write_json, read_str, write_str, check_exists_file
 from src.track import Track
-
 
 def to_linear_function(a: Tuple[int|float, int|float], b: Tuple[int|float, int|float]) -> Callable[[int], float|float]:
     """
@@ -42,15 +41,24 @@ class Envelope:
         a_t:float,
         d:float,
         d_t:float,
+        s_t: float,
         curve: str|None = None
     ):
         """
-        envelope to apply to a prerecorded Track.
+        ADSR envelope to apply to a prerecorded Track.
 
-        volume is expressed in range 0..1: 0 = silent, 1 = 100% of track volume
-        time is expressed in range 0..1: 0 = start of track, 1 = end of track
+        an envelope is basically a curve that passes through 8 points:
+        - (  0, 0), (a_t, a): attack phase
+        - (a_t, a), (d_t, d): decay phase
+        - (d_t, d), (s_t, d): sustain phase. sustain volume is equal to decay volume
+        - (s_t, d), (  1, 0): release phase
 
-        NOTE: attack starts at (0,0) (= start of track, silent) and sustain ends at (0,0) (end of track, silent).
+        where x-coordinates are points in time and y-coordinates are audio volumes.
+        volume and time are expressed in range 0..1:
+            - volume: 0 = silent, 1 = 100% of track volume
+            - time: 0 = start of track, 1 = end of track
+
+        NOTE: attack starts at (0,0) (= start of track, silent) and release ends at (0,0) (end of track, silent).
         the main reason is that the calculation and application of a multiplier function
         gets much more complicated otherwise: the region where there is sound can be different
         from the dimensions of the track...
@@ -59,35 +67,43 @@ class Envelope:
         :param d: decay volume
         :param a_t: attack time
         :param d_t: decay time
+        :param s_t: sustain time. sustain volume is implicitly defined as equal to `d`
         :param curve: interpolation curve
         """
         try:
             # assert that all values are in 0..1 range
-            for v in [ a, d, a_t, d_t ]:
+            for v in [ a, d, a_t, d_t, s_t ]:
                 validate_float_isinrange(v, 0, 1, inclusive=True)
             # assert that times are correctly ordered
-            for x1, x2 in ((0,a_t), (a_t,d_t), (d_t,1)):
+            for x1, x2 in ((0,a_t), (a_t,d_t), (d_t,s_t), (s_t,1)):
                 assert x1<=x2
         except (AssertionError, ValueError):
             print(
                 "invalid envelope: expected 0 <= a_t <= d_t and a <= 1 and d <= 1, got: {}"
-                .format(json.dumps({ a:a, a_t:a_t, d:d, d_t:d_t }))
+                .format(json.dumps({ "a":a, "a_t":a_t, "d":d, "d_t":d_t, "s_t":s_t }))
             )
 
+        # NOTE: other interpolation options: https://www.w3resource.com/numpy/snippet/numpy-interpolation-guide.php
         curve = self.curve_default if curve == None else curve
         if curve not in self.curves_allowed:
             raise NotImplementedError(f"invalid value for 'curve': expected one of {self.curves_allowed}, got '{curve}'")
 
+        # sustain volume is the same as decay => cannot be set by user
+        s = d
+
         self.a = a
         self.d = d
+        self.s = d
         self.a_t = a_t
         self.d_t = d_t
+        self.s_t = s_t
         self.curve = curve
 
         if self.curve == "linear":
             self.attack_mul = to_linear_function((0,0), (a_t,a))
             self.decay_mul = to_linear_function((a_t,a), (d_t,d))
-            self.sustain_mul = to_linear_function((d_t,d), (1,0))
+            self.sustain_mul = to_linear_function((d_t,d), (s_t,s))
+            self.release_mul = to_linear_function((s_t,s), (1,0))
         return
 
     @classmethod
@@ -95,12 +111,13 @@ class Envelope:
         """
         generate an envelope with random values
         """
-        a_t, d_t = sorted([ random.random() for _ in range(0,2) ])
+        a_t, d_t, s_t = sorted([ random.random() for _ in range(0,3) ])
         return Envelope(
             a=1,
             d=random.uniform(0.5, 1.),
             a_t=a_t,
             d_t=d_t,
+            s_t=s_t,
             curve=random.choice(cls.curves_allowed)
         )
 
@@ -110,7 +127,7 @@ class Envelope:
         load an envelope from a dict, with validation. useful when loading envelopes from file.
         to create an envelope without validation, use Envelope(**envelope_as_dict)
         """
-        all_attrs = [ "a", "d", "a_t", "d_t", "curve" ]  # all allowed keys
+        all_attrs = [ "a", "d", "a_t", "d_t", "s_t", "curve" ]  # all allowed keys
 
         env = validate_type(env, dict)
 
@@ -130,20 +147,48 @@ class Envelope:
             "d": self.d,
             "a_t": self.a_t,
             "d_t": self.d_t,
+            "s_t": self.s_t,
             "curve": self.curve
         }
 
     def write(self, path:str|Path):
         write_json(path, self.to_dict())
 
-    def get_mul_func(self, step_name: Literal["a","d","s"]) -> Callable:
+    def get_mul_func(self, step_name: Literal["a","d","s","r"]) -> Callable:
         if step_name == "a":
             return self.attack_mul
         elif step_name == "d":
             return self.decay_mul
         elif step_name == "s":
             return self.sustain_mul
+        elif step_name == "r":
+            return self.release_mul
         return
+
+    def make_multiplier(
+        self,
+        lin_func: Callable,
+        track_step: np.ndarray,
+        pct_start: float,
+        pct_end: float,
+    ) -> np.ndarray:
+        """
+        generate a multiplier for single envelope step (attack/decay/sustain/release) for the relevant part of a track.
+
+        basically a multiplier is an ndarray of values in range 0..1 used to apply
+        `self.(attack|decay|sustain|release)_mul`.
+        the multiplier expands the *_mul functions (defined with 0 being the start of
+        the track, 1 being the end) to have as many values as the track has frames.
+        it will be used to multiply each value in `track_step.data`, thus applying the envelope.
+
+        :param lin_func: a function generated from plotting a line between 2 points
+        :param track_step: a slice of a numpy array
+        :param pct_start: the start of track_step within the entire track in range 0..1
+        :param pct_end: the end track_step within the entire track in range 0..1
+        """
+        indices = np.linspace(pct_start, pct_end, track_step.shape[0])
+        multipliers = lin_func(indices)
+        return multipliers
 
     def apply_step(
         self,
@@ -153,37 +198,32 @@ class Envelope:
         pct_end: float,
     ) -> np.ndarray:
         """
-        apply a single envelope step (attack/decay/sustain) to the relevant slice of a track.
-
-        :param lin_func: a function generated from plotting a line between 2 points
-        :param track_step: a slice of a numpy array
-        :param pct_start: the start of track_step within the entire track in range 0..1
-        :param pct_end: the end track_step within the entire track in range 0..1
+        generate and apply an envelope multiplier to the relevant slice of a track.
         """
-        indices = np.linspace(pct_start, pct_end, track_step.shape[0])
-        multipliers = lin_func(indices)  # lin_func is just slope*x + intercept, works on arrays natively
-        return track_step * multipliers
+        return track_step * self.make_multiplier(lin_func, track_step, pct_start, pct_end)
 
     def apply(self, track: Track) -> Track:
         """
         apply an envelope to a Track
         """
-
-        tracks = []
-        for step_name, pct_start, pct_end in [
+        envelope_data = [
             (self.attack_mul, 0, self.a_t),
             (self.decay_mul, self.a_t, self.d_t),
-            (self.sustain_mul, self.d_t, 1),
-        ]:
-            tracks.append(
+            (self.sustain_mul, self.d_t, self.s_t),
+            (self.release_mul, self.s_t, 1)
+        ]
+        track_enveloped = np.concat(
+            [
                 self.apply_step(
-                    step_name,
+                    lin_func,
                     track.get_range(pct_start, pct_end),
                     pct_start,
                     pct_end
-                )
-            )
-        track.data = np.concat(tracks, axis=0)
+                ) for lin_func, pct_start, pct_end in envelope_data
+            ],
+            axis=0
+        )
+        track.data = track_enveloped
         return track
 
 

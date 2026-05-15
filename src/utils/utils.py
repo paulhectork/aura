@@ -44,3 +44,18 @@ def trailing_zeroes(i:int, total:int)-> str:
 
 def get_random_item(l: List):
     return random.choice(l)
+
+def array_plot(a: np.ndarray, title: str|None = None, xlabel: str|None = None, ylabel: str|None = None):
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        raise ImportError("matplotlib is only available if `dev` packages are installed !")
+    plt.plot(a)
+    if title:
+        plt.title(title)
+    if xlabel:
+        plt.xlabel(xlabel)
+    if ylabel:
+        plt.ylabel(ylabel)
+    plt.grid(True)
+    plt.show()

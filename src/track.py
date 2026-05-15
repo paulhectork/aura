@@ -109,6 +109,15 @@ class Track:
         frame_end = self.get_frame_index(pct_end, True)
         return self.data[frame_start:frame_end]
 
+    def fill(self) -> "Track":
+        """
+        replace `track.data` with an array containing only the value `1000`.
+        useful in dev to test envelopes and plot envelope.
+        """
+        self.data = np.ndarray(self.data.shape)
+        self.data.fill(1000)
+        return self
+
 
 class TrackList:
 
@@ -150,7 +159,6 @@ class TrackList:
             for ((rate, data), trackpath)
             in read_wav_from_dir(trackspath)
         ])
-
 
 
 
