@@ -1,6 +1,8 @@
 from typing import Literal, List, Tuple, Any
 from pathlib import Path
 
+import numpy as np
+
 from src.utils.validate import validate_type, validate_comparison, validate_isinlist, validate_float_isinrange, validate_pretty
 from src.utils.io_op import check_exists_file
 from src.utils.utils import seconds_to_frame
@@ -11,12 +13,25 @@ NO_SILENCE = "no-silence"
 ENV_RANDOM = "random"
 ENV_NONE = None
 
+def validate_nimpulses(nimpulses: int|str) -> int|Literal["no-silence"]:
+    # nimpulses must be int or "no-silence"
+    try:
+        return validate_type(nimpulses, int)
+    except ValueError:
+        validate_comparison("eq", a=nimpulses, b=NO_SILENCE)
+        return nimpulses  # pyright: ignore
+
+
+def validate_nimpulses_pretty(nimpulses: int|str) -> int|Literal["no-silence"]:
+    return validate_pretty("nimpulses", validate_nimpulses, nimpulses=nimpulses)
+
+
 class Splice:
 
     chunks: TrackList
     outpath: Path
     length: int
-    nimpulses: int|Literal["NO_SILENCE"]
+    nimpulses: int|Literal["no-silence"]
     envelope: EnvelopeList|Literal["random"]|None
     nchannels: int
     width: float
@@ -31,7 +46,7 @@ class Splice:
         trackspath:str|Path,
         outpath:str|Path,
         length:float,
-        nimpulses:int|Literal["NO_SILENCE"]=NO_SILENCE,  # pyright:ignore
+        nimpulses:int|Literal["no-silence"]=NO_SILENCE,  # pyright:ignore
         envelope:str|None=ENV_NONE,
         nchannels:Literal[1,2]=2,
         width:float=1,
@@ -46,10 +61,8 @@ class Splice:
         outpath, exists = check_exists_file(outpath, overwrite)
         pattern_chunk = Track.read(pattern) if pattern is not None else None
         length = validate_pretty("length", validate_type, i=length, type_=float)
-        try:
-            nimpulses = validate_pretty("nimpulses", validate_type, i=nimpulses, type_=int)
-        except ValueError:
-            validate_pretty("nimpulses", validate_comparison, "eq", a=nimpulses, b=NO_SILENCE)
+        nimpulses = validate_nimpulses_pretty(nimpulses)
+
         #NOTE mode has no effect if 'nchannels' != 2
         validate_pretty("mode", validate_isinlist, i=mode, vallist=[2,3,"range"])
         validate_pretty("nchannels", validate_isinlist, i=nchannels, vallist=[1,2])
@@ -67,7 +80,6 @@ class Splice:
             try:
                 envelope_data = EnvelopeList.read(envelope)  # pyright: ignore
             except Exception as e:
-                raise e
                 print(f"could not read envelopes from file: {envelope}. File should contain the output of Envelope.to_dict()")
                 exit(1)
         else:
@@ -103,10 +115,65 @@ class Splice:
         else:
             raise ValueError(f"error selecting envelope strategy. `Splice.envelope` should be `None`, `'random'` or `EnvelopeList`, but is: {type(self.envelope)}")
 
+    def fill_no_silence(self) -> np.ndarray:
+        """
+        fill 1 track with chunks until self.length has been reached
+        """
+        data = self.get_chunk_apply_env().data
+        l = data.shape[0]
+        while l < self.length:
+            chunk = self.get_chunk_apply_env().data
+            data = np.concatenate([data, chunk], axis=0)
+            l += data.shape[0]
+        return data
+
+    def no_silence(self) -> np.ndarray:
+        if self.nchannels == 1:
+            data = self.fill_no_silence()
+        elif self.nchannels == 2:
+            if self.mode == "range":
+                print("unsupported option combination !!!")
+                raise
+            # self.mode == 2 or 3.
+            else:
+                # prepare individual tracks
+                tracks = [
+                    self.fill_no_silence()
+                    for _ in range(self.mode)
+                ]
+                # clip tracks to the shortest length
+                min_len = min(t.shape[0] for t in tracks)
+                tracks = [
+                    t[:min_len] for t in tracks
+                ]
+                # combine in a single numpy array
+                data = np.stack([ t for t in tracks ], axis=1)
+                # convert 3 channels back to stereo
+                # by distributing the center channel along L and R channels
+                if self.mode == 3:
+                    track_center = data[:,1] / 2
+                    tracks_lr = np.stack([ data[:,0], data[:,2] ], axis=1)
+                    # add center to L and R + multiply by 2/3 to renormalize volume.
+                    data = np.apply_along_axis(
+                        lambda x: (x + track_center) * (2/3),
+                        axis=0,
+                        arr=tracks_lr
+                    )
+        else:
+            print("unsupported option combination !!!")
+            raise
+        return data
+
+
     def pipeline(self):
         # NOTE: envs successfully applied !
         # TODO: position chunks in space !
-        for _ in self.chunks.tracklist:
-            self.get_chunk_apply_env()
+        # for _ in self.chunks.tracklist:
+        #     self.get_chunk_apply_env()
+        from src.utils.utils import array_plot
+        if self.nimpulses == NO_SILENCE:
+            d = self.no_silence()
+            print("result:::", d, d.shape)
+            array_plot(d)
 
 

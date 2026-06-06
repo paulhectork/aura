@@ -28,7 +28,7 @@ class Track:
         self.nchannels = get_nchannels(data)
         self.rate = rate
         self.nframes = data.shape[0]  # number of frames in Track
-        self.data = data
+        self.data: np.ndarray = data
         self.trackpath = trackpath  # path to the track
 
     @classmethod

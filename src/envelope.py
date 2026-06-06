@@ -47,7 +47,7 @@ class Envelope:
         """
         ADSR envelope to apply to a prerecorded Track.
 
-        an envelope is basically a curve that passes through 8 points:
+        an envelope is basically a curve that passes through 5 points:
         - (  0, 0), (a_t, a): attack phase
         - (a_t, a), (d_t, d): decay phase
         - (d_t, d), (s_t, d): sustain phase. sustain volume is equal to decay volume
