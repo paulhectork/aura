@@ -45,17 +45,29 @@ def trailing_zeroes(i:int, total:int)-> str:
 def get_random_item(l: List):
     return random.choice(l)
 
-def array_plot(a: np.ndarray, title: str|None = None, xlabel: str|None = None, ylabel: str|None = None):
+def array_plot(
+    a: np.ndarray,
+    stack: bool = True
+):
+    """
+    `a` is a 2D array.
+    if stack, combine all ndarrays in a.shape[0] in a single plot
+    otherwise, create as many subplots as a.shape[1] => 2 subplots for a stereo track
+    """
     try:
         import matplotlib.pyplot as plt
     except ImportError:
         raise ImportError("matplotlib is only available if `dev` packages are installed !")
-    plt.plot(a)
-    if title:
-        plt.title(title)
-    if xlabel:
-        plt.xlabel(xlabel)
-    if ylabel:
-        plt.ylabel(ylabel)
+
+    if stack:
+        plt.plot(a)
+    else:
+        n = a.shape[1] or 1
+        fig, axs = plt.subplots(n)
+        for i in range(n):
+            print(i)
+            axs[i].plot(a[:,i])
+            axs[i].grid(True)
+
     plt.grid(True)
     plt.show()

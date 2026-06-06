@@ -112,7 +112,7 @@ class Envelope:
         generate an envelope with random values
         """
         a_t, d_t, s_t = sorted([ random.random() for _ in range(0,3) ])
-        return Envelope(
+        return cls(
             a=1,
             d=random.uniform(0.5, 1.),
             a_t=a_t,
@@ -165,8 +165,8 @@ class Envelope:
             return self.release_mul
         return
 
+    @staticmethod
     def make_multiplier(
-        self,
         lin_func: Callable,
         track_step: np.ndarray,
         pct_start: float,
