@@ -50,7 +50,9 @@ class Track:
 
     def to_mono(self):
         if self.nchannels > 1:
-            self.data = np.mean(self.data, axis=1)
+            # self.data = np.mean(self.data, axis=1)
+            # self.data = np.sum(self.data, axis=1) / self.nchannels
+            self.data = np.mean(self.data.astype(np.float32), axis=1).astype(self.data.dtype)
             self.nchannels = 1
         return self
 
@@ -58,7 +60,7 @@ class Track:
         if self.nchannels == 2:
             pass
         elif self.nchannels == 1:
-            # convert np.ndarray of shape (x, 1) into np.ndarray of shape (x, 2): [ [l1,r1],[l2,r2], ... ]
+            # convert np.ndarray of shape (x, 1) into np.ndarray of shape (x, 2)
             self.data = self.data / 2
             self.data = np.transpose(np.vstack((self.data, self.data)))
             self.nchannels = 2

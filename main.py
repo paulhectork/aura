@@ -165,7 +165,7 @@ def split(
     "-m", "--mode",
     type=click.Choice([2,3,"range"]),
     default=2,
-    help="how to place the chunks in stereo space (no effect if 'nchannels==1'). if 'mode=2', chunks will be hard-panned (placed either on the left or right channel) ; if 'mode==3', chunks will be placed in left, right and center of stereo space ; if 'range', chunks will be placed randomly in the stereo space."
+    help="how to place the chunks in stereo space (no effect if 'nchannels==1'). if 'mode=2', chunks will be hard-panned (placed either on the left or right channel) ; if 'mode==3', chunks will be placed in left, right and center of stereo space ; if 'range', chunks will be placed randomly in the stereo space. if `nimpulses` is 'no-silence', 'mode' is set to 3 by default and 'range' is imposible."
 )
 @click.option(
     "-p", "--pattern",

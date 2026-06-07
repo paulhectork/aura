@@ -50,7 +50,7 @@ def array_plot(
     stack: bool = True
 ):
     """
-    `a` is a 2D array.
+    `a` is a 1D or 2D array.
     if stack, combine all ndarrays in a.shape[0] in a single plot
     otherwise, create as many subplots as a.shape[1] => 2 subplots for a stereo track
     """
@@ -59,10 +59,11 @@ def array_plot(
     except ImportError:
         raise ImportError("matplotlib is only available if `dev` packages are installed !")
 
-    if stack:
+    # f it's a 2D array, stack all axes. if it's a 1D array, splitting over subplots is useless
+    if stack or len(a.shape) == 1:
         plt.plot(a)
     else:
-        n = a.shape[1] or 1
+        n = a.shape[1]
         fig, axs = plt.subplots(n)
         for i in range(n):
             print(i)

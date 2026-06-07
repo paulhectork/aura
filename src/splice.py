@@ -63,13 +63,9 @@ class Splice:
         length = validate_pretty("length", validate_type, i=length, type_=float)
         nimpulses = validate_nimpulses_pretty(nimpulses)
 
-        #NOTE mode has no effect if 'nchannels' != 2
         validate_pretty("mode", validate_isinlist, i=mode, vallist=[2,3,"range"])
         validate_pretty("nchannels", validate_isinlist, i=nchannels, vallist=[1,2])
         validate_pretty("width", validate_float_isinrange, i=width, min_=0, max_=1, inclusive=True)
-
-        if nchannels == 1:
-            width = 0.
 
         if repeat is not None:
             repeat = validate_pretty("repeat", validate_type, i=repeat, type_=float)
@@ -85,8 +81,25 @@ class Splice:
         else:
             envelope_data = envelope
 
+        # set contextual defaults and force conditionnal values for some options depending on other options.
+        # disable width on stereo
+        if nchannels == 1:
+            width = 0.
+        # if the track is in mono, set `mode` to 1 so we only work on 1 channel
+        # effectively, this disables mode if 'nchannels' != 2
+        if nchannels != 2:
+            mode = 1
+        # "range" cannot be usd in NO_SILENCE mode
+        if mode == "range" and nimpulses == NO_SILENCE:
+            mode = 3
+
         # NOTE: all tracks are converted to mono: the mono chunks will be placed in stereo space
+        # TODO fix distorsion generated here
+        c = chunks.tracklist[0]
+        print("PRE MODIF", c.data.shape, c.data.min(), c.data.max())
+        #self.chunks = chunks.resample().to_mono()
         self.chunks = chunks.resample().to_mono()
+        print("POST MODIF", c.data.shape, c.data.min(), c.data.max())
         self.outpath = outpath
         self.length = seconds_to_frame(length, chunks.rate)
         self.nimpulses = nimpulses
@@ -110,6 +123,9 @@ class Splice:
         # each time envelope.apply(track) is called, the track is modified
         # with the env => track volume will quickly tend to 0.
         chunk = self.chunks.get_one(copy_track=True)
+        print("MINIMUM VALUE IN CHUNK", chunk.data.min(0))
+        print("MAXIMUM VALUE IN CHUNK", chunk.data.max(0))
+
         if self.envelope == ENV_NONE:
             return chunk
         elif self.envelope == ENV_RANDOM:
@@ -134,6 +150,7 @@ class Splice:
     def no_silence(self) -> np.ndarray:
         if self.nchannels == 1:
             data = self.fill_no_silence()
+            print("OKI !!!")
         elif self.nchannels == 2:
             if self.mode == "range":
                 print("unsupported option combination !!!")
@@ -166,6 +183,8 @@ class Splice:
         else:
             print("unsupported option combination !!!")
             raise
+        print("MINIMUM VALUE IN TRACK", data.min(0))
+        print("MAXIMUM VALUE IN TRACK", data.max(0))
         return data
 
 
