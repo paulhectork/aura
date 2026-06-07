@@ -141,7 +141,7 @@ def split(
     type=INT_OR_STR,
     required=True,
     default= NO_SILENCE,
-    help="number of impulses (an impulse is a trigger to add a chunk to the output track). either '<int>' (use a defined number of impulses) or 'no-silence' (fill the track with chunks until the length is over)"
+    help="number of impulses per minute (an impulse is a trigger to add a chunk to the output track). either '<int>' (use a defined number of impulses) or 'no-silence' (fill the track with chunks until the length is over)"
 )
 @click.option(
     "-e", "--envelope",
@@ -178,6 +178,13 @@ def split(
     default=10,
     help="interval in seconds at which to repeat 'pattern'. must be shorter than 'pattern''s length"
 )
+@click.option(
+    "--crackle",
+    type=click.BOOL,
+    is_flag=True,
+    default=False,
+    help="add extra clipping'n'crackling to the generated track (done by messing with type conversion when applying width)"
+)
 @common_options
 def splice(
     trackspath,
@@ -190,7 +197,8 @@ def splice(
     mode,
     pattern,
     repeat,
-    overwrite
+    overwrite,
+    crackle
 ):
     """
     command line interface for aura.splice: generate a track of `length` seconds by playing chunks in `trackspath` randomly `nimpulses` times and write it to `outpath`. it is possible to apply envelopes to the tracks, place them in stereo space, add a repeating pattern...
@@ -206,7 +214,8 @@ def splice(
         mode=mode,
         pattern=pattern,
         repeat=repeat,
-        overwrite=overwrite
+        overwrite=overwrite,
+        crackle=crackle
     ).pipeline()
 
 

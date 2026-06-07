@@ -1,11 +1,12 @@
 from typing import Literal, List, Tuple, Any
 from pathlib import Path
+import random
 
 import numpy as np
 
 from src.utils.validate import validate_type, validate_comparison, validate_isinlist, validate_float_isinrange, validate_pretty
 from src.utils.io_op import check_exists_file
-from src.utils.utils import seconds_to_frame, to_mono, to_stereo
+from src.utils.utils import frame_to_seconds, is_1darray, seconds_to_frame, to_mono, to_stereo, fade, is_1darray, apply_pan, apply_width, array_plot
 from src.track import Track, TrackList
 from src.envelope import Envelope, EnvelopeList
 
@@ -53,7 +54,8 @@ class Splice:
         mode:int=2,
         pattern:str|None=None,
         repeat:float|None=10,
-        overwrite:bool=False
+        overwrite:bool=False,
+        crackle:bool=False
     ):
         # validate data
         overwrite = validate_pretty("overwrite", validate_type, i=overwrite, type_=bool)
@@ -62,6 +64,7 @@ class Splice:
         pattern_chunk = Track.read(pattern) if pattern is not None else None
         length = validate_pretty("length", validate_type, i=length, type_=float)
         nimpulses = validate_nimpulses_pretty(nimpulses)
+        crackle = validate_pretty("crackle", validate_type, i=crackle, type_=bool)
 
         validate_pretty("mode", validate_type, i=mode, type_=int)
         validate_pretty("mode", validate_comparison, opname="gt", a=mode, b=0)
@@ -105,6 +108,7 @@ class Splice:
         self.pattern_repeat = seconds_to_frame(repeat, chunks.rate)  # pyright:ignore
         self.overwrite = overwrite
         self.rate = chunks.rate
+        self.crackle = crackle
         return
 
     def get_chunk_apply_env(self) -> Track:
@@ -126,7 +130,7 @@ class Splice:
         else:
             raise ValueError(f"error selecting envelope strategy. `Splice.envelope` should be `None`, `'random'` or `EnvelopeList`, but is: {type(self.envelope)}")
 
-    def fill_no_silence(self) -> np.ndarray:
+    def no_silence_once(self) -> np.ndarray:
         """
         fill 1 track with chunks until self.length has been reached
         """
@@ -141,12 +145,12 @@ class Splice:
     def no_silence(self) -> np.ndarray:
         # mono => fill 1  channels with samples
         if self.nchannels == 1:
-            data = self.fill_no_silence()
+            data = self.no_silence_once()
         # stereo => fill `self.mode` channels with samples, then convert them back to stereo (2-channel track)
-        elif self.nchannels == 2:
+        else:
             # prepare individual tracks
             tracks = [
-                self.fill_no_silence()
+                self.no_silence_once()
                 for _ in range(self.mode)
             ]
             # clip tracks to the shortest length
@@ -159,25 +163,93 @@ class Splice:
             # and squeeze converts it back to (nsamples,): normal mono audio.
             data = np.stack([ t for t in tracks ], axis=1).squeeze()
             data = to_stereo(data)  # convert multichannel to stereo
-            # apply width
-            from src.utils.utils import apply_width
-            data = apply_width(data, self.width)
+            # apply widthapply_width
+            data = apply_width(data, self.width, crackle=self.crackle)
+        return data
+
+    def impulses(self) -> np.ndarray:
+        # calculate total number of impulses to generate for the whole output track duration.
+        length_seconds = frame_to_seconds(self.length, self.rate)
+        nimpulses = int((self.nimpulses / 60) * length_seconds)
+
+        # define possible panning positions depending on `self.width` and `self.mode`.
+        # pan_pos is an array of all possible panning positions, in -1..1 space.
+        pan_positions = None
+        if self.mode == 1:
+            pan_positions = [0]
         else:
-            print("unsupported option combination !!!")
-            raise
+            pan_positions = np.linspace(-1*self.width, 1*self.width, self.mode)
+
+        def pan_chunk(_chunk: np.ndarray):
+            if self.nchannels != 1:
+                return apply_pan(random.choice(pan_positions), _chunk)
+            return _chunk
+
+        def place_chunk(_data:np.ndarray, _chunk:np.ndarray, pos: int):
+            """
+            shape _chunk: (samples,)
+            shape _data: (samples, nchannels?)
+            """
+            if not is_1darray(_chunk):
+                raise ValueError(f"in place_chunks, _chunk must be 1d array. got: {_chunk.shape}")
+
+            dtype_orig = _chunk.dtype
+
+            # find start and end positions in `_data`where chunk will be placed.
+            s = pos
+            e = pos+_chunk.shape[0]
+            # clip `_chunk` so that it doesn't end after the track's length
+            if e > self.length:
+                e = self.length
+                _chunk = _chunk[:e-s,]
+            # slicing changes depending on wether we're dealing with 1D or 2D arrays
+            if is_1darray(_data):
+                data_pre = _data[:s,]
+                data_post = _data[e:,]
+                overlap = _data[s:e,]
+            else:
+                data_pre = _data[:s,:]
+                data_post = _data[e:,:]
+                overlap = _data[s:e,:]
+                # 2d array => stereo => pan the chunk
+                _chunk = pan_chunk(_chunk)
+
+            # we are attempting to write in `data` at a position where there is aldready sound
+            # => fade transition existing sound and new sound
+            if np.count_nonzero(overlap) > 0:
+                _chunk = fade(overlap, _chunk)
+
+            # return the updated `data`.
+            return np.concatenate([data_pre, _chunk, data_post], axis=0).astype(dtype_orig)
+
+        # base empty ndarray
+        if self.nchannels == 1:
+            shape = (self.length)
+        else:
+            shape = (self.length, self.nchannels)
+        data = np.array(np.zeros(shape))
+
+        # fill
+        n = 0  # tracks number of impulses used
+        while n < nimpulses:
+            pos = random.randint(0, data.shape[0])
+            chunk = self.get_chunk_apply_env()
+            data = place_chunk(data, chunk.data, pos)
+            n += 1
+
         return data
 
 
     def pipeline(self):
-        # NOTE: envs successfully applied !
-        # TODO: position chunks in space !
-        from src.utils.utils import array_plot
         if self.nimpulses == NO_SILENCE:
             data = self.no_silence()
-            print("result:::", data, data.shape)
-            array_plot(data, stack=False)
+        else:
+            data = self.impulses()
 
-            track = Track(rate=self.rate, data=data, trackpath=self.outpath)
-            track.write()
+        print("result:::", data, data.shape)
+        array_plot(data, stack=False)
+        track = Track(rate=self.rate, data=data, trackpath=self.outpath)
+        track.write()
+        return
 
 

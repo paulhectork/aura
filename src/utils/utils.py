@@ -68,7 +68,7 @@ def to_mono(data: np.ndarray) -> np.ndarray:
 def to_stereo(data: np.ndarray) -> np.ndarray:
     """
     convert a multidimensionnal array to stereo.
-    input shape  : (samples, nchannels) or (samples,) (nchannels = the number of channels in the track)
+    input shape  : (samples, nchannels?) (nchannels = the number of channels in the track)
     output shape : (samples, 2)
     """
     nchannels = data.shape[1] if len(data.shape) > 1 else 1
@@ -112,50 +112,112 @@ def to_stereo(data: np.ndarray) -> np.ndarray:
     return data
 
 
-def apply_width(data: np.ndarray, width: float, clipmore: bool = False) -> np.ndarray:
+def apply_width(data: np.ndarray, width: float, crackle: bool = False) -> np.ndarray:
     """
     mostly copied from `adjust_width` here: https://www.sbehrens4d.com/posts/python_dsp_1_panning.html
 
-
-    :param width: width is in range 0..1, inclusive:
+    :param w: the width, in range 0..1, inclusive:
         0   => left and right channels are centered => 0% stereo space => mono
         0.5 => left channel is panned at 50%L, right channel panned at 50%R => 50% stereo space
         1   => hard panning (L is 100%L, R is 100%R) => 100% stereo space
     :param data:
         input shape of data  : (samples, 2)
         output shape of data : (samples, 2)
-    :param clipmore: if `True`, avoid retyping to float32 before retyping. this will add some nice clipping'n'crackling.
+    :param crackle: if `True`, avoid retyping to float32 before retyping. this will add some nice clipping'n'crackling.
     """
     dtype_orig = data.dtype
     shape_orig = data.shape
 
     # convert to float32 for less clipping. only useful on `l` and `r , will be propagated in all other calculations
-    retype = lambda x: x.astype(np.float32) if not clipmore else x
+    retype = lambda x: x.astype(np.float32) if not crackle else x
 
-    # if not clipmore, return. if clipmore, process `data`. this will not modify its width but add more clipping.
-    if width == 1:
+    # if not crackle, return. if crackle, process `data`. this will not modify its width but add more clipping.
+    if width == 1 and not crackle:
         return data
     # get left and right channels
     l = retype(data[:,0])
     r = retype(data[:,1])
     # compute rescaled mid and side channels
-    x_m = (l + r) * 0.5
-    x_s = (l - r) * 0.5
+    data_m = (l + r) * 0.5
+    data_s = (l - r) * 0.5
     # compute rescaled mid-side basis
     e_m = np.array([[1],[1]])
     e_s = np.array([[1],[-1]])
     # compute mid and side signals (sound in center + sound in L/R)
-    x_mid = x_m * e_m
-    x_side = x_s * e_s
+    data_mid = data_m * e_m
+    data_side = data_s * e_s
     # compute adjusted signal
-    x_adjusted = x_mid + width * x_side
+    data_adjusted = data_mid + width * data_side
 
-    # x_adjusted now is of shape (n_channels, samples) (1 array for left channel, 1 array for right channel)
+    # data_adjusted now is of shape (n_channels, samples) (1 array for left channel, 1 array for right channel)
     # => transpose back to (samples, n_channels) ([[L,R], [L,R]])
     # retype to dtype_orig to avoid crazy distorsion
-    data = np.transpose(x_adjusted).astype(dtype_orig)
-    assert np.equal(shape_orig, data.shape).all()
+    data = np.transpose(data_adjusted).astype(dtype_orig)
+    assert np.equal(shape_orig, data.shape).all(), f"shape changed in processing. input: {shape_orig}, output: {data.shape}"
     return data
+
+
+def apply_pan(pos: float, data:np.ndarray) -> np.ndarray:
+    """
+    copied from `mono_pan` here: https://www.sbehrens4d.com/posts/python_dsp_1_panning.html
+    place a mono audio signal in the stereo field.
+
+    :param pos: position in the stereo field, encoded as a float in range -1..1
+    :param data: mono audio chunk represented by a 1d ndarray.
+    """
+    PI = np.pi
+    SQRT12 = np.sqrt(0.5)
+    dtype_orig = data.dtype
+
+    def compute_panning_coeffs():
+        # center panning
+        if pos == 0:
+            rho = lam = SQRT12
+        # hard left panning
+        elif pos == -1:
+            lam, rho = 1, 0
+        # hard left panning
+        elif pos == 1:
+            lam, rho = 0, 1
+        # intermediate panning
+        else:
+            # compute angle
+            alpha = (pos + 1) / 4 * PI
+            # infer coefficients
+            lam = np.cos(alpha)
+            rho = np.sin(alpha)
+        return lam, rho
+
+    # make sure x_m is a mono signal
+    if not (type(data) == np.ndarray and data.ndim == 1):
+        raise ValueError("input must be a 1d numpy array.")
+    # get panning coefficients
+    lam, rho = compute_panning_coeffs()
+    # compute panned signal
+    data = np.array([[lam],[rho]]) * data
+    data = np.transpose(data).astype(dtype_orig)
+    return data
+
+
+def fade(d1: np.ndarray, d2: np.ndarray) -> np.ndarray:
+    """
+    fade out d1, fade in d2 and return the result as a single ndarray
+    input shapes: (samples, nchannels?)
+    output shape: (samples, nchannels?)
+    """
+    assert np.equal(d1.shape, d2.shape).all(), f"incompatible shaoes. d1: {d1.shape}, d2: {d2.shape}"
+    l = d2.shape[0]
+    fin = np.linspace(0, 1, l)
+    fout = 1 - fin
+    if d1.ndim == 2:
+        fin  = fin[:, np.newaxis]   # (samples,) -> (samples, 1) => broadcasts over nchannels
+        fout = fout[:, np.newaxis]
+    data = d1 * fout + d2 * fin
+    return data
+
+
+def is_1darray(d: np.ndarray) -> bool:
+    return len(d.shape) == 1
 
 
 def array_plot(
