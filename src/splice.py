@@ -35,7 +35,7 @@ class Splice:
     envelope: EnvelopeList|Literal["random"]|None
     nchannels: int
     width: float
-    mode: int|Literal["range"]
+    mode: int
     pattern: Track|None
     patter_repeat: int
     overwrite: bool
@@ -50,7 +50,7 @@ class Splice:
         envelope:str|None=ENV_NONE,
         nchannels:Literal[1,2]=2,
         width:float=1,
-        mode:Literal[2,3,"range"]=2,
+        mode:int=2,
         pattern:str|None=None,
         repeat:float|None=10,
         overwrite:bool=False
@@ -63,7 +63,8 @@ class Splice:
         length = validate_pretty("length", validate_type, i=length, type_=float)
         nimpulses = validate_nimpulses_pretty(nimpulses)
 
-        validate_pretty("mode", validate_isinlist, i=mode, vallist=[2,3,"range"])
+        validate_pretty("mode", validate_type, i=mode, type_=int)
+        validate_pretty("mode", validate_comparison, opname="gt", a=mode, b=0)
         validate_pretty("nchannels", validate_isinlist, i=nchannels, vallist=[1,2])
         validate_pretty("width", validate_float_isinrange, i=width, min_=0, max_=1, inclusive=True)
 
@@ -89,9 +90,6 @@ class Splice:
         # effectively, this disables mode if 'nchannels' != 2
         if nchannels != 2:
             mode = 1
-        # "range" cannot be usd in NO_SILENCE mode
-        if mode == "range" and nimpulses == NO_SILENCE:
-            mode = 3
 
         # NOTE: all tracks are converted to mono: the mono chunks will be placed in stereo space
         #self.chunks = chunks.resample().to_mono()
@@ -141,27 +139,29 @@ class Splice:
         return data
 
     def no_silence(self) -> np.ndarray:
+        # mono => fill 1  channels with samples
         if self.nchannels == 1:
             data = self.fill_no_silence()
+        # stereo => fill `self.mode` channels with samples, then convert them back to stereo (2-channel track)
         elif self.nchannels == 2:
-            if self.mode == "range":
-                print("unsupported option combination !!!")
-                raise
-            # self.mode == 2 or 3.
-            else:
-                # prepare individual tracks
-                tracks = [
-                    self.fill_no_silence()
-                    for _ in range(self.mode)
-                ]
-                # clip tracks to the shortest length
-                min_len = min(t.shape[0] for t in tracks)
-                tracks = [
-                    t[:min_len,] for t in tracks
-                ]
-                # combine in a single numpy array
-                data = np.stack([ t for t in tracks ], axis=1)
-                data = to_stereo(data)  # convert multichannel to stereo
+            # prepare individual tracks
+            tracks = [
+                self.fill_no_silence()
+                for _ in range(self.mode)
+            ]
+            # clip tracks to the shortest length
+            min_len = min(t.shape[0] for t in tracks)
+            tracks = [
+                t[:min_len,] for t in tracks
+            ]
+            # combine in a single numpy array
+            # `squeeze` is used if `self.mode==1`: np.stack() will then create a shape (nsamples,1),
+            # and squeeze converts it back to (nsamples,): normal mono audio.
+            data = np.stack([ t for t in tracks ], axis=1).squeeze()
+            data = to_stereo(data)  # convert multichannel to stereo
+            # apply width
+            from src.utils.utils import apply_width
+            data = apply_width(data, self.width)
         else:
             print("unsupported option combination !!!")
             raise

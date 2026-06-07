@@ -2,7 +2,17 @@ from typing import List
 import random
 
 import numpy as np
-from numpy.typing import NDArray
+
+
+def trailing_zeroes(i:int, total:int)-> str:
+    """
+    in an iterator of size `total`, at iteration `i`, return a pretty-printed string indicating the iteration number with trailing `0`:
+    i=10, total=999 => 010
+    i=55, total=999 => 055
+    """
+    # add trailing zeroes to `i` for prettier filename formatting
+    num_zeroes = len(str(total)) - len(str(i))
+    return f"{'0'*num_zeroes}{i}"
 
 
 def seconds_to_frame(time:float, rate:int) -> int:
@@ -26,22 +36,11 @@ def frame_to_seconds(frame: int, rate:int) -> float:
     return frame / rate
 
 
-def get_chunk_ends(chunk_starts: NDArray, chunk_lengths: NDArray) -> NDArray:
+def get_chunk_ends(chunk_starts: np.ndarray, chunk_lengths: np.ndarray) -> np.ndarray:
     """
     from 2 1D-arrays (one with start position of each chunk, the other length of each chunk), return an array of end position of each chunk
     """
     return np.sum([chunk_starts, chunk_lengths], axis=0)
-
-
-def trailing_zeroes(i:int, total:int)-> str:
-    """
-    in an iterator of size `total`, at iteration `i`, return a pretty-printed string indicating the iteration number with trailing `0`:
-    i=10, total=999 => 010
-    i=55, total=999 => 055
-    """
-    # add trailing zeroes to `i` for prettier filename formatting
-    num_zeroes = len(str(total)) - len(str(i))
-    return f"{'0'*num_zeroes}{i}"
 
 
 def get_random_item(l: List):
@@ -94,7 +93,6 @@ def to_stereo(data: np.ndarray) -> np.ndarray:
         # channel 0 is 100% L, channel n-1 is 100% R
         r_pan = np.linspace(0, 1, nchannels)  # shape: (nchannels,)
         l_pan = 1 - r_pan                     # shape: (nchannels,)
-        print(l_pan, r_pan)
         # 2. apply panning: multiply each channel by its L/R weights
         # np.sum is applied along each channel. 2 ndarrays are generated:
         # 1 for the left track, 1 for the right
@@ -111,6 +109,52 @@ def to_stereo(data: np.ndarray) -> np.ndarray:
     # invalid data array (0 or less channels)
     else:
         raise NotImplementedError(f"'to_stereo' conversion not implemented for number of channels: '{nchannels}'")
+    return data
+
+
+def apply_width(data: np.ndarray, width: float, clipmore: bool = False) -> np.ndarray:
+    """
+    mostly copied from `adjust_width` here: https://www.sbehrens4d.com/posts/python_dsp_1_panning.html
+
+
+    :param width: width is in range 0..1, inclusive:
+        0   => left and right channels are centered => 0% stereo space => mono
+        0.5 => left channel is panned at 50%L, right channel panned at 50%R => 50% stereo space
+        1   => hard panning (L is 100%L, R is 100%R) => 100% stereo space
+    :param data:
+        input shape of data  : (samples, 2)
+        output shape of data : (samples, 2)
+    :param clipmore: if `True`, avoid retyping to float32 before retyping. this will add some nice clipping'n'crackling.
+    """
+    dtype_orig = data.dtype
+    shape_orig = data.shape
+
+    # convert to float32 for less clipping. only useful on `l` and `r , will be propagated in all other calculations
+    retype = lambda x: x.astype(np.float32) if not clipmore else x
+
+    # if not clipmore, return. if clipmore, process `data`. this will not modify its width but add more clipping.
+    if width == 1:
+        return data
+    # get left and right channels
+    l = retype(data[:,0])
+    r = retype(data[:,1])
+    # compute rescaled mid and side channels
+    x_m = (l + r) * 0.5
+    x_s = (l - r) * 0.5
+    # compute rescaled mid-side basis
+    e_m = np.array([[1],[1]])
+    e_s = np.array([[1],[-1]])
+    # compute mid and side signals (sound in center + sound in L/R)
+    x_mid = x_m * e_m
+    x_side = x_s * e_s
+    # compute adjusted signal
+    x_adjusted = x_mid + width * x_side
+
+    # x_adjusted now is of shape (n_channels, samples) (1 array for left channel, 1 array for right channel)
+    # => transpose back to (samples, n_channels) ([[L,R], [L,R]])
+    # retype to dtype_orig to avoid crazy distorsion
+    data = np.transpose(x_adjusted).astype(dtype_orig)
+    assert np.equal(shape_orig, data.shape).all()
     return data
 
 
@@ -135,7 +179,6 @@ def array_plot(
         n = a.shape[1]
         fig, axs = plt.subplots(n)
         for i in range(n):
-            print(i)
             axs[i].plot(a[:,i])
             axs[i].grid(True)
 
