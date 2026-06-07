@@ -103,9 +103,13 @@ class Splice:
     def get_chunk_apply_env(self) -> Track:
         """
         1. select a chunk and apply an env to it
-        NOTE: chunks and envs are selected and applied at random.
+        chunks and envs are selected and applied at random.
         """
-        chunk = self.chunks.get_one()
+        # NOTE: necessary to return a copy of the track. otherwise,
+        # inplace mutation of track.data happens when applying an env:
+        # each time envelope.apply(track) is called, the track is modified
+        # with the env => track volume will quickly tend to 0.
+        chunk = self.chunks.get_one(copy_track=True)
         if self.envelope == ENV_NONE:
             return chunk
         elif self.envelope == ENV_RANDOM:
@@ -121,27 +125,8 @@ class Splice:
         """
         data = self.get_chunk_apply_env().data
         l = data.shape[0]
-
-        i = 0
-        avg = 0
-        step = 10
-
         while l < self.length:
             chunk = self.get_chunk_apply_env().data
-
-            # NOTE: avg absolute value of a chunk decreases at each iteration
-            # NOTE => track gets more silent.
-            # NOTE  : probably a problem with Envelope.random() 's internal state
-            # NOTE  : (if we call get_chunk_apply_end with self.envelope == ENV_NONE, the pb disappears.
-            # NOTE  : the longer the ouput track, the quieter chunks get.
-            # test with: uv run main.py splice --length 120 --nimpulses no-silence --envelope random --nchannels 2 --mode 2  --outpath ./data/splice.wav ./data/chunks/ -W
-            i += 1
-            avg += np.mean(np.abs(chunk))
-            if i % step == 0:
-                avg = round(avg / step)
-                print(f"step {i}: avg {avg}")
-                avg = 0
-
             data = np.concatenate([data, chunk], axis=0)
             l = data.shape[0]
         return data
@@ -160,11 +145,6 @@ class Splice:
                     self.fill_no_silence()
                     for _ in range(self.mode)
                 ]
-
-                # NOTE DEBUG PRINT. notice mean abs chunk value decreases with each new track.
-                for i, t in enumerate(tracks):
-                    print(f"TRACK = {i}  / SHAPE = {t.shape} / MEAN ABSOLUTE CHUNK VALUE = {np.mean(np.abs(t))}")
-
                 # clip tracks to the shortest length
                 min_len = min(t.shape[0] for t in tracks)
                 tracks = [
@@ -172,8 +152,7 @@ class Splice:
                 ]
                 # combine in a single numpy array
                 data = np.stack([ t for t in tracks ], axis=1)
-                # convert 3 channels back to stereo
-                # by distributing the center channel along L and R channels
+                # convert 3 channels back to stereo by distributing the center channel along L and R channels
                 if self.mode == 3:
                     track_center = data[:,1] / 2
                     tracks_lr = np.stack([ data[:,0], data[:,2] ], axis=1)
@@ -183,12 +162,7 @@ class Splice:
                         axis=0,
                         arr=tracks_lr
                     )
-                print("DATA AVG ABS VALUE :", np.apply_along_axis(
-                    lambda x: np.mean(np.abs(x)),
-                    axis=0,
-                    arr=data
-                ))
-                print("DATA SHAPE         :", data.shape)
+                # TODO apply width
         else:
             print("unsupported option combination !!!")
             raise
@@ -198,8 +172,6 @@ class Splice:
     def pipeline(self):
         # NOTE: envs successfully applied !
         # TODO: position chunks in space !
-        # for _ in self.chunks.tracklist:
-        #     self.get_chunk_apply_env()
         from src.utils.utils import array_plot
         if self.nimpulses == NO_SILENCE:
             data = self.no_silence()

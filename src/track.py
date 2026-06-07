@@ -1,6 +1,7 @@
 from typing import Tuple, List
 from pathlib import Path
 import random
+import copy
 
 import numpy as np
 from scipy.signal import resample
@@ -149,8 +150,15 @@ class TrackList:
         self.tracklist = [ t.to_mono() for t in self.tracklist ]
         return self
 
-    def get_one(self) -> Track:
-        return get_random_item(self.tracklist)
+    def get_one(self, copy_track=False) -> Track:
+        # NOTE: copying the Track avoids in-place modification when selecting
+        # several times the same track and applying the env to it. otherwise,
+        # i.e. each time an env is applied to the track, track.data gets updated
+        # with the env'd track => track.data will quickly converge to 0.
+        chunk = get_random_item(self.tracklist)
+        if copy_track:
+            return copy.deepcopy(chunk)
+        return chunk
 
     @classmethod
     def read_from_dir(cls, trackspath: str|Path) -> "TrackList":
