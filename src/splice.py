@@ -38,7 +38,7 @@ class Splice:
     width: float
     mode: int
     pattern: Track|None
-    patter_repeat: int
+    pattern_repeat: int
     overwrite: bool
     rate: int
 
