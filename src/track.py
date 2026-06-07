@@ -50,20 +50,57 @@ class Track:
 
     def to_mono(self):
         if self.nchannels > 1:
-            # self.data = np.mean(self.data, axis=1)
-            # self.data = np.sum(self.data, axis=1) / self.nchannels
+            # NOTE: we do extra type conversions to avoid distorsions when converting to/from mono
+            # when converting to mono, we upcast as Float32;
+            # at the end of the coversion, we downcast back to data's `dtype`.
+            # this is because mean will sum up the left and right channels
+            # which can cause dtype overflow: numbers larger than their original dtype.
+            # i.e., Int16 is in range (−32768 to 32767) => convert to Float32 to avoid distorsion
             self.data = np.mean(self.data.astype(np.float32), axis=1).astype(self.data.dtype)
             self.nchannels = 1
         return self
 
     def to_stereo(self):
-        if self.nchannels == 2:
+        # invalid data array
+        if self.nchannels <= 0:
+            raise NotImplementedError(f"'to_stereo' conversion not implemented for number of channels: '{self.nchannels}'")
+        # aldready in stereo
+        elif self.nchannels == 2:
             pass
+        # mono to stereo
         elif self.nchannels == 1:
             # convert np.ndarray of shape (x, 1) into np.ndarray of shape (x, 2)
-            self.data = self.data / 2
-            self.data = np.transpose(np.vstack((self.data, self.data)))
+            # the `astype` dtype conversion is to avoid dtype overflow that
+            # may be caused by intermediate operations. see note in `to_mono`.
+            self.data = np.stack((self.data, self.data), axis=1).astype(self.data.dtype)
             self.nchannels = 2
+        # multichannel to stereo
+        elif self.nchannels > 2:
+            orig_dtype = self.data.dtype
+            # avoid dtype overflow
+            data = self.data.astype(np.float32)  # shape: (samples, nchannels)
+
+            # 1. compute per-channel pan weights
+            # channel 0 is 100% L, channel n-1 is 100% R
+            n = self.nchannels
+            r_pan = np.linspace(0, 1, n)  # shape: (nchannels,)
+            l_pan = 1 - r_pan             # shape: (nchannels,)
+
+            # 2. apply panning: multiply each channel by its L/R weights
+            # np.sum is applied along each channel. 2 ndarrays are generated:
+            # 1 for the left track, 1 for the right
+            l = np.sum(data * l_pan, axis=1)  # shape: (samples,)
+            r = np.sum(data * r_pan, axis=1)  # shape: (samples,)
+
+            # 3. normalize to avoid clipping on the cast back
+            peak = np.max(np.abs(np.stack([l, r])))
+            max_val = np.iinfo(orig_dtype).max if np.issubdtype(orig_dtype, np.integer) else 1.0
+            if peak > max_val:
+                l, r = l * (max_val / peak), r * (max_val / peak)
+
+            self.data = np.stack((l, r), axis=1).astype(orig_dtype)
+            self.nchannels = 2
+
         else:
             raise NotImplementedError(f"'to_stereo' conversion not implemented for number of channels: '{self.nchannels}'")
         return self
