@@ -185,6 +185,18 @@ class Splice:
                 return apply_pan(random.choice(pan_positions), _chunk)
             return _chunk
 
+        def split_data(_data: np.ndarray, s: int, e:int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+            # slicing changes depending on wether we're dealing with 1D or 2D arrays
+            if is_1darray(_data):
+                data_pre = _data[:s,]
+                data_post = _data[e:,]
+                data_overlap = _data[s:e,]
+            else:
+                data_pre = _data[:s,:]
+                data_post = _data[e:,:]
+                data_overlap = _data[s:e,:]
+            return data_pre, data_overlap, data_post
+
         def place_chunk(_data:np.ndarray, _chunk:np.ndarray, pos: int):
             """
             shape _chunk: (samples,)
@@ -194,7 +206,6 @@ class Splice:
                 raise ValueError(f"in place_chunks, _chunk must be 1d array. got: {_chunk.shape}")
 
             dtype_orig = _chunk.dtype
-
             # find start and end positions in `_data`where chunk will be placed.
             s = pos
             e = pos+_chunk.shape[0]
@@ -202,22 +213,15 @@ class Splice:
             if e > self.length:
                 e = self.length
                 _chunk = _chunk[:e-s,]
-            # slicing changes depending on wether we're dealing with 1D or 2D arrays
-            if is_1darray(_data):
-                data_pre = _data[:s,]
-                data_post = _data[e:,]
-                overlap = _data[s:e,]
-            else:
-                data_pre = _data[:s,:]
-                data_post = _data[e:,:]
-                overlap = _data[s:e,:]
-                # 2d array => stereo => pan the chunk
+            # split _data
+            data_pre, data_overlap, data_post = split_data(data, s, e)
+            # 2d array => stereo => pan the chunk
+            if self.nchannels != 1:
                 _chunk = pan_chunk(_chunk)
-
             # we are attempting to write in `data` at a position where there is aldready sound
             # => fade transition existing sound and new sound
-            if np.count_nonzero(overlap) > 0:
-                _chunk = fade(overlap, _chunk)
+            if np.count_nonzero(data_overlap) > 0:
+                _chunk = fade(data_overlap, _chunk)
 
             # return the updated `data`.
             return np.concatenate([data_pre, _chunk, data_post], axis=0).astype(dtype_orig)
@@ -236,6 +240,15 @@ class Splice:
             chunk = self.get_chunk_apply_env()
             data = place_chunk(data, chunk.data, pos)
             n += 1
+
+        # use `apply_width`, not to actually change stereo width, but to add extra crackle.
+        if self.crackle:
+            if self.nchannels == 1:
+                data = to_stereo(data)
+                data = apply_width(data, self.width, self.crackle)
+                data = to_mono(data)
+            else:
+                data = apply_width(data, self.width, self.crackle)
 
         return data
 
