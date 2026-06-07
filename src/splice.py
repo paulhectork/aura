@@ -5,7 +5,7 @@ import numpy as np
 
 from src.utils.validate import validate_type, validate_comparison, validate_isinlist, validate_float_isinrange, validate_pretty
 from src.utils.io_op import check_exists_file
-from src.utils.utils import seconds_to_frame
+from src.utils.utils import seconds_to_frame, to_mono, to_stereo
 from src.track import Track, TrackList
 from src.envelope import Envelope, EnvelopeList
 
@@ -152,8 +152,7 @@ class Splice:
                 # prepare individual tracks
                 tracks = [
                     self.fill_no_silence()
-                    for _ in range(10)
-                    #for _ in range(self.mode)
+                    for _ in range(self.mode)
                 ]
                 # clip tracks to the shortest length
                 min_len = min(t.shape[0] for t in tracks)
@@ -162,26 +161,10 @@ class Splice:
                 ]
                 # combine in a single numpy array
                 data = np.stack([ t for t in tracks ], axis=1)
-                print("DATA -1:", data, data.shape)
-                # convert 3 channels back to stereo by distributing the center channel along L and R channels
-                if self.mode == 3:
-                    # track_center = data[:,1] / 2
-                    # tracks_lr = np.stack([ data[:,0], data[:,2] ], axis=1)
-                    # # add center to L and R + multiply by 2/3 to renormalize volume.
-                    # data = np.apply_along_axis(
-                    #     lambda x: (x + track_center) * (2/3),
-                    #     axis=0,
-                    #     arr=tracks_lr
-                    # )
-                    _t = Track(self.rate, data=data)
-                    _t.to_stereo()
-                    data = _t.data
-                # TODO apply width
+                data = to_stereo(data)  # convert multichannel to stereo
         else:
             print("unsupported option combination !!!")
             raise
-        print("MINIMUM VALUE IN TRACK", data.min(0))
-        print("MAXIMUM VALUE IN TRACK", data.max(0))
         return data
 
 
