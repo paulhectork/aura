@@ -64,7 +64,7 @@ uv run main.py split \
     --length    <float: length of output chunks in seconds> \
     --dev       <float: standard deviation from length in seconds> \
     --nchunks   <int: number of chunts to generate> \
-    --nchannels <1|2: stereo or mono> \
+    --nchannels <1|2: stereo or mono>
 
 # view help for the full docs
 uv run main.py split --help
