@@ -43,6 +43,8 @@ class Splice:
     pattern_repeat: int
     overwrite: bool
     rate: int
+    crackle: bool
+    visualize: bool
 
     def __init__(
         self,
@@ -57,7 +59,8 @@ class Splice:
         pattern:str|None=None,
         repeat:float|None=10,
         overwrite:bool=False,
-        crackle:bool=False
+        crackle:bool=False,
+        visualize: bool=False
     ):
         # validate data
         overwrite = validate_pretty("overwrite", validate_type, i=overwrite, type_=bool)
@@ -66,6 +69,7 @@ class Splice:
         pattern_chunk = Track.read(pattern) if pattern is not None else None
         nimpulses = validate_nimpulses_pretty(nimpulses)
         crackle = validate_pretty("crackle", validate_type, i=crackle, type_=bool)
+        visualize = validate_pretty("visualize", validate_type, i=visualize, type_=bool)
         length = validate_pretty("length", validate_type, i=length, type_=float)
 
         validate_pretty("lines", validate_type, i=lines, type_=int)
@@ -114,8 +118,10 @@ class Splice:
         self.overwrite = overwrite
         self.rate = chunks.rate
         self.crackle = crackle
+        self.visualize = visualize
 
         # define a progress bar
+        # we define the pbar as a class object so that several functions can update it at once.
         if self.nimpulses == NO_SILENCE:
             desc = f"splicing (length: {self.length_seconds}s., no silence)"
             total = self.length * self.lines
@@ -284,10 +290,14 @@ class Splice:
             data = self.no_silence()
         else:
             data = self.impulses()
+        self.pb.close()
 
-        array_plot(data, stack=False)
+        if self.visualize:
+            array_plot(data, stack=False)
         track = Track(rate=self.rate, data=data, trackpath=self.outpath)
         track.write()
+        print()
+        print(f"aura::splice: output track saved to: {self.outpath}")
         return
 
 

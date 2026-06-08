@@ -185,6 +185,13 @@ def split(
     default=False,
     help="add extra clipping'n'crackling to the generated track (done by messing with type conversion when applying width)"
 )
+@click.option(
+    "-v", "--visualize",
+    type=click.BOOL,
+    is_flag=True,
+    default=False,
+    help="display a visualization of the generated track"
+)
 @common_options
 def splice(
     trackspath,
@@ -198,7 +205,8 @@ def splice(
     pattern,
     repeat,
     overwrite,
-    crackle
+    crackle,
+    visualize
 ):
     """
     command line interface for aura.splice: generate a track of `length` seconds by playing chunks in `trackspath` randomly `nimpulses` times and write it to `outpath`. it is possible to apply envelopes to the tracks, place them in stereo space, add a repeating pattern...
@@ -215,7 +223,8 @@ def splice(
         pattern=pattern,
         repeat=repeat,
         overwrite=overwrite,
-        crackle=crackle
+        crackle=crackle,
+        visualize=visualize
     ).pipeline()
 
 

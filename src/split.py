@@ -191,3 +191,5 @@ class Split:
         """
         for chunk in self.chunks:
             chunk.write()
+        print()
+        print(f"aura::split: output chunks saved to: {self.outpath}")
