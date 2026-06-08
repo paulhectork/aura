@@ -86,8 +86,8 @@ uv run main.py splice \
     --outpath   </path/to/output/file> \
     --length    <float: output length in seconds> \
     --nimpulses <int: number of impulses per minute (equivalent to BPM)> \
-    --nchannels  <1|2: stereo or mono> \
-    --nlines     <int: number of pan positions on which to place sound> \
+    --nchannels <1|2: stereo or mono> \
+    --nlines    <int: number of pan positions on which to place sound> \
     --width     <float: stereo width, in range 0..1>
     --envelope  <"random" or path to envelope file: envelope to apply> \
     --crackle   <flag: add crackle through numpy dtype conversions>
