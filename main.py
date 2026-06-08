@@ -162,10 +162,10 @@ def split(
     help=r"streo width (no effect if 'nchannels==1'): if '1', tracks will be panned to 100% left/right, if '0.3', tracks will be panned to 30% of left/right"
 )
 @click.option(
-    "-L", "--lines",
+    "-L", "--nlines",
     type=click.INT,
     default=2,
-    help="number of 'lines', or pan-positions on which to place sound in stereo. if lines=10, sound will be distributed accross 10 lines panned evenly from L to R (-1,-0.9,...,0.9,1). output will be converted back to stereo. useless if nchannels==1"
+    help="number of 'lines', or pan-positions on which to place sound in stereo. if nlines=10, sound will be distributed accross 10 lines panned evenly from L to R (-1,-0.9,...,0.9,1). output will be converted back to stereo. useless if nchannels==1"
 )
 @click.option(
     "-p", "--pattern",
@@ -201,7 +201,7 @@ def splice(
     envelope,
     nchannels,
     width,
-    lines,
+    nlines,
     pattern,
     repeat,
     overwrite,
@@ -219,7 +219,7 @@ def splice(
         envelope=envelope,
         nchannels=nchannels,
         width=width,
-        lines=lines,
+        nlines=nlines,
         pattern=pattern,
         repeat=repeat,
         overwrite=overwrite,
