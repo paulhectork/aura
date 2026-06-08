@@ -1,12 +1,22 @@
 # aura
 
-`aura` is an (au)dio (randomizer) and splitter. what it does in a nutshell is:
+`aura` is an (au)dio (ra)ndomizer and splitter. what it does in a nutshell is:
 
 - `split`: take an input track and split it into randomly selected chunks
 - `splice`: take an array of input chunks and fill a track with them in stereo space
 - `envelope`: generate and write envelopes that can be used in `splice`
 
 `aura` provides simple tools tailored to do exactly what i want them to do. `aura` is made for (harsh) noise (wall) and weird sounds. to hear exemples, check out [this](./data/splice_500i_60s.wav).
+
+--- 
+
+## about
+
+the idea for `aura` dates back to 6-7 years when i was obsessively into harsh noise wall and wanted to make walls by randomly splitting and rearranging source sounds. like a lot of my noise ideas, [Sven K](https://svenkay.com/)'s work was an inspiration. in particular:
+- the magnificent [Malheurr](https://weworshipthevoid.bandcamp.com/album/v15d-purge-fluids-causerie-sur-le-temps) which has always sounded like randomized black metal to me
+- [D. Kreitzer & J. Erdős](https://weworshipthevoid.bandcamp.com/album/v16d-organised-sound-infinitary-combinatorics-of-a-finite-set) which literally asks for an aura-like tool to play the album.
+
+since those 6-7 years, i also started coding quite a bit, and wanted both to get back into "fun" (non-professionnal) and "creative" (small scale) coding. i also wanted to learn more about python sound processing (which is too mathy for me), numpy (which i doubt i learned anything), OOP, CLI UI and designing a library.
 
 ---
 
@@ -131,16 +141,6 @@ Options:
                       error if the output dir or file exists (default=False)
   -o, --outpath TEXT  path to the output file or directory  [required]
 ```
-
---- 
-
-## about
-
-the idea for `aura` dates back to 6-7 years when i was obsessively into harsh noise wall and wanted to make walls by randomly splitting and rearranging source sounds. like a lot of my noise ideas, [Sven K](https://svenkay.com/)'s work was an inspiration. in particular:
-- the magnificent [Malheurr](https://weworshipthevoid.bandcamp.com/album/v15d-purge-fluids-causerie-sur-le-temps) which has always sounded like randomized black metal to me
-- [D. Kreitzer & J. Erdős](https://weworshipthevoid.bandcamp.com/album/v16d-organised-sound-infinitary-combinatorics-of-a-finite-set) which literally asks for an aura-like tool to play the album.
-
-since those 6-7 years, i also started coding quite a bit, and wanted both to get back into "fun" (non-professionnal) and "creative" (small scale) coding. i also wanted to learn more about python sound processing (which is too mathy for me), numpy (which i doubt i learned anything), OOP, CLI UI and designing a library.
 
 ---
 
