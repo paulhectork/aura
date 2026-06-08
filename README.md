@@ -8,6 +8,15 @@
 
 `aura` provides simple tools tailored to do exactly what i want them to do. `aura` is made for (harsh) noise (wall) and weird sounds. to hear exemples, check out [this](./data/splice_500i_60s.wav).
 
+---
+
+## TODO
+
+aura is functionnal but here are upcoming functionnalities i want to add:
+
+- `splice`: implement `--pattern` and `--pattern-repeat` (define a chunk that will be appended to the output track at a regular interval)
+- `chaos`: a chaos factor in range 0..1 that would make things weirder: i.e., randomly reverse tracks, concentrate them in certain time intervals...
+
 --- 
 
 ## about
