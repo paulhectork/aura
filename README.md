@@ -17,7 +17,7 @@
 - `splice`: implement `--pattern` and `--pattern-repeat` (define a chunk that will be appended to the output track at a regular interval)
 - `splice`: add `chaos`, a chaos factor in range 0..1 that would make things weirder: i.e., randomly reverse tracks, concentrate them in certain time intervals...
 
---- 
+---
 
 ## about
 
@@ -39,7 +39,7 @@ cd aura
 uv sync
 ```
 
---- 
+---
 
 ## usage
 
@@ -87,7 +87,7 @@ uv run main.py splice \
     --length    <float: output length in seconds> \
     --nimpulses <int: number of impulses per minute (equivalent to BPM)> \
     --nchannels  <1|2: stereo or mono> \
-    --lines     <int: number of pan positions on which to place sound> \
+    --nlines     <int: number of pan positions on which to place sound> \
     --width     <float: stereo width, in range 0..1>
     --envelope  <"random" or path to envelope file: envelope to apply> \
     --crackle   <flag: add crackle through numpy dtype conversions>
