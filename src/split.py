@@ -1,9 +1,11 @@
 from typing import Literal, List
 from pathlib import Path
+import textwrap
 import re
 
 import numpy as np
 from scipy.stats import truncnorm
+from tqdm import tqdm
 
 from src.track import Track
 from src.utils.io_op import make_dir
@@ -68,6 +70,16 @@ class Split:
         self.dev = dev
         self.nchannels = nchannels
         self.split_all = split_all
+
+        print(textwrap.dedent(f"""\n
+            aura::split - generating chunks from an input track
+                * input track............ {trackpath}
+                * number of chunks....... {self.nchunks}
+                * chunk length........... {self.length}
+                * length std. deviation.. {self.dev}
+                * output channels........ {self.nchannels}
+        """))
+        return
 
     def pipeline(self):
         """
@@ -151,7 +163,6 @@ class Split:
         """
         use self.chunk_pos as indices and populate `self.chunks`
         """
-        from tqdm import tqdm
         self.chunks = []
         for i, (start, end) in tqdm(
             enumerate(self.chunk_pos),

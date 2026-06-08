@@ -1,5 +1,6 @@
 from typing import Literal, List, Tuple, Any
 from pathlib import Path
+import textwrap
 import random
 
 import numpy as np
@@ -114,6 +115,7 @@ class Splice:
         self.rate = chunks.rate
         self.crackle = crackle
 
+        # define a progress bar
         if self.nimpulses == NO_SILENCE:
             desc = f"splicing (length: {self.length_seconds}s., no silence)"
             total = self.length * self.mode or self.nchannels
@@ -122,6 +124,19 @@ class Splice:
             total = int(self.nimpulses * self.length_seconds / 60)
         self.pb = tqdm(desc=desc, total=total)  # pyright: ignore
 
+        print(textwrap.dedent(f"""\n
+            aura::splice - fill a track with randomly positionned chunks
+                * input:
+                    * path to chunks.... {trackspath}
+                    * number of chunks.. {len(self.chunks.tracklist)}
+                * output:
+                    * path.............. {self.outpath}
+                    * length (s.) ...... {self.length_seconds}
+                    * impulses/minute... {self.nimpulses}
+                    * mode.............. {self.mode}
+                    * width............. {self.width}
+                    * channels.......... {self.nchannels}
+        """))
         return
 
     def get_chunk_apply_env(self) -> Track:
@@ -284,7 +299,6 @@ class Splice:
         else:
             data = self.impulses()
 
-        print("result:::", data, data.shape)
         array_plot(data, stack=False)
         track = Track(rate=self.rate, data=data, trackpath=self.outpath)
         track.write()
