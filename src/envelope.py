@@ -206,6 +206,7 @@ class Envelope:
         """
         apply an envelope to a Track
         """
+        dtype_orig = track.data.dtype
         envelope_data = [
             (self.attack_mul, 0, self.a_t),
             (self.decay_mul, self.a_t, self.d_t),
@@ -216,14 +217,14 @@ class Envelope:
             [
                 self.apply_step(
                     lin_func,
-                    track.get_range(pct_start, pct_end),
+                    track.get_range(pct_start, pct_end).astype(np.float32),
                     pct_start,
                     pct_end
                 ) for lin_func, pct_start, pct_end in envelope_data
             ],
             axis=0
         )
-        track.data = track_enveloped
+        track.data = track_enveloped.astype(dtype_orig)
         return track
 
 
