@@ -43,6 +43,8 @@ uv sync
 
 ## usage
 
+`aura` is meant to be used as a command line interface, though it could be easily used as a Python library as well. all parameters are given through CLI arguments and options.
+
 an input track example can be found [here](https://github.com/paulhectork/aura/blob/main/data/inputs/hn_1min_mono.wav).
 
 ### `split`
