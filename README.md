@@ -24,9 +24,13 @@ uv sync
 
 ## usage
 
+an input track example can be found [here](https://github.com/paulhectork/aura/blob/main/data/inputs/hn_1min_mono.wav).
+
 ### `split`
 
 split a track randonly into chunks of predefined length, and save those chunks to an array
+
+outputted chunks can be found [here](https://github.com/paulhectork/aura/tree/main/data/chunks).
 
 ```bash
 uv run main.py split [OPTIONS] ./path/to/input/track
@@ -56,6 +60,8 @@ Options:
 ### `splice`
 
 `splice` *splices* -- that is to say, collates -- chunks in a single track by randomly positionning them in time and in stereo space.
+
+a track made out of the above chunks can be found [here](https://github.com/paulhectork/aura/blob/main/data/splice_500i_60s.wav).
 
 ```bash
 uv run main.py splice [OPTIONS] ./path/to/chunks/directory
@@ -115,6 +121,8 @@ Options:
 uv run main.py <n>
 ```
 
+some envelopes can be found [here](https://github.com/paulhectork/aura/blob/main/data/envs.txt).
+
 ```
   generate `n` random envelopes and write them to `outpath`
 
@@ -129,7 +137,7 @@ Options:
 ## about
 
 the idea for `aura` dates back to 6-7 years when i was obsessively into harsh noise wall and wanted to make walls by randomly splitting and rearranging source sounds. like a lot of my noise ideas, [Sven K](https://svenkay.com/)'s work was an inspiration. in particular:
-- the magnificent [Malheurr](https://weworshipthevoid.bandcamp.com/album/v15d-purge-fluids-causerie-sur-le-temps) which has always sounded like randomized black metal
+- the magnificent [Malheurr](https://weworshipthevoid.bandcamp.com/album/v15d-purge-fluids-causerie-sur-le-temps) which has always sounded like randomized black metal to me
 - [D. Kreitzer & J. Erdős](https://weworshipthevoid.bandcamp.com/album/v16d-organised-sound-infinitary-combinatorics-of-a-finite-set) which literally asks for an aura-like tool to play the album.
 
 since those 6-7 years, i also started coding quite a bit, and wanted both to get back into "fun" (non-professionnal) and "creative" (small scale) coding. i also wanted to learn more about python sound processing (which is too mathy for me), numpy (which i doubt i learned anything), OOP, CLI UI and designing a library.
