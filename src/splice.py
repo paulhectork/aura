@@ -162,14 +162,28 @@ class Splice:
         """
         fill 1 track with chunks until self.length has been reached
         """
-        data = self.get_chunk_apply_env().data
-        self.pb.update(data.shape[0])
-        l = data.shape[0]
-        while l < self.length:
+        # output ndarray
+        data = np.zeros(self.length, dtype=np.float64)
+        # track total # of inserted frames.
+        i = 0
+        # for output dtype conversion
+        dtype_orig = None
+        while i < self.length:
+            # 1darray
             chunk = self.get_chunk_apply_env().data
-            data = np.concatenate([data, chunk], axis=0)
-            l = data.shape[0]
-            self.pb.update(chunk.shape[0])
+            # data's final dtyle
+            if dtype_orig is None:
+                dtype_orig = chunk.dtype
+            # if necessary, clip chunk so that data is not larger than self.length.
+            nframes = chunk.shape[0]
+            if i + nframes > self.length:
+                nframes = self.length - i
+                chunk = data[:nframes]
+            # add the chunk to `data`
+            data[i:i+nframes] = chunk
+            i += nframes
+            self.pb.update(nframes)
+        data = data.astype(dtype_orig)
         return data
 
     def no_silence(self) -> np.ndarray:
@@ -183,21 +197,16 @@ class Splice:
             data = self.no_silence_once()
         # stereo => fill `self.lines` channels with samples, then convert them back to stereo (2-channel track)
         else:
-            # prepare individual tracks
-            tracks = [
-                self.no_silence_once()
-                for _ in range(self.lines)
-            ]
-            # clip tracks to the shortest length
-            min_len = min(t.shape[0] for t in tracks)
-            tracks = [
-                t[:min_len,] for t in tracks
-            ]
-            # combine in a single numpy array
+            # prepare individual tracks and  combine in a single numpy array
             # `squeeze` is used if `self.lines==1`: np.stack() will then create a shape (nsamples,1),
             # and squeeze converts it back to (nsamples,): normal mono audio.
-            data = np.stack([ t for t in tracks ], axis=1).squeeze()
-            data = to_stereo(data)  # convert multichannel to stereo
+            # shape: (samples, nchannels?)
+            data = np.stack(
+                [ self.no_silence_once() for _ in range(self.lines) ],
+                axis=1
+            ).squeeze()
+            # convert multichannel to stereo
+            data = to_stereo(data)
             # apply widthapply_width
             data = apply_width(data, self.width, crackle=self.crackle)
         return data
