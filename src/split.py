@@ -151,8 +151,13 @@ class Split:
         """
         use self.chunk_pos as indices and populate `self.chunks`
         """
+        from tqdm import tqdm
         self.chunks = []
-        for i, (start, end) in enumerate(self.chunk_pos):
+        for i, (start, end) in tqdm(
+            enumerate(self.chunk_pos),
+            total=self.chunk_pos.shape[0],
+            desc=f"generating chunks"
+        ):
             chunk = self.track.data[start:end]
             # asert `chunk` has the same number of dimensions and same number of channels as `self.track`
             assert_nchannels = chunk.shape[1] == self.track.data.shape[1] \
