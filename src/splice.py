@@ -207,81 +207,60 @@ class Splice:
         fill strategy if `nimpulses` is a number (# of impulses per minute).
         fill the track with `nimpulses` chunks per minute placed randomly in time and panned randomly in stereo space.
         """
-        # calculate total number of impulses to generate for the whole output track duration.
         length_seconds = frame_to_seconds(self.length, self.rate)
         nimpulses = int(self.nimpulses * length_seconds / 60)
 
         # define possible panning positions depending on `self.width` and `self.lines`.
-        # pan_pos is an array of all possible panning positions, in -1..1 space.
-        pan_positions = None
         if self.lines == 1:
             pan_positions = [0]
         else:
-            pan_positions = np.linspace(-1*self.width, 1*self.width, self.lines)
+            pan_positions = np.linspace(-self.width, self.width, self.lines)
+        # pre-generate an array containing panning positions for all chunks
+        if self.nchannels != 1:
+            pan_choices = np.random.choice(len(pan_positions), size=nimpulses)
+        # pre-generate an array with all starting positions for all chunks
+        positions = np.random.randint(0, self.length, size=nimpulses)
 
-        def pan_chunk(_chunk: np.ndarray):
-            if self.nchannels != 1:
-                return apply_pan(random.choice(pan_positions), _chunk)
-            return _chunk
+        # output datatype for the full track
+        dtype_orig = self.get_chunk_apply_env().data.dtype
+        # datatype for calculations and processing: dtype_orig should be in int16,
+        # which is quickly overflown when doing calculations, which will cause distorsion
+        # => for all calculations, use `float32`. at the end, convert back to `dtype_orig`
+        # to avoid distorsion when saving to output file
+        dtype_calc = np.float64
 
-        def split_data(_data: np.ndarray, s: int, e:int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-            # slicing changes depending on wether we're dealing with 1D or 2D arrays
-            if is_1darray(_data):
-                data_pre = _data[:s,]
-                data_post = _data[e:,]
-                data_overlap = _data[s:e,]
-            else:
-                data_pre = _data[:s,:]
-                data_post = _data[e:,:]
-                data_overlap = _data[s:e,:]
-            return data_pre, data_overlap, data_post
-
-        def place_chunk(_data:np.ndarray, _chunk:np.ndarray, pos: int):
-            """
-            shape _chunk: (samples,)
-            shape _data: (samples, nchannels?)
-            """
-            if not is_1darray(_chunk):
-                raise ValueError(f"in place_chunks, _chunk must be 1d array. got: {_chunk.shape}")
-
-            dtype_orig = _chunk.dtype
-            # find start and end positions in `_data`where chunk will be placed.
-            s = pos
-            e = pos+_chunk.shape[0]
-            # clip `_chunk` so that it doesn't end after the track's length
-            if e > self.length:
-                e = self.length
-                _chunk = _chunk[:e-s,]
-            # split _data
-            data_pre, data_overlap, data_post = split_data(data, s, e)
-            # 2d array => stereo => pan the chunk
-            if self.nchannels != 1:
-                _chunk = pan_chunk(_chunk)
-            # we are attempting to write in `data` at a position where there is aldready sound
-            # => fade transition existing sound and new sound
-            if np.count_nonzero(data_overlap) > 0:
-                _chunk = fade(data_overlap, _chunk)
-
-            # return the updated `data`.
-            return np.concatenate([data_pre, _chunk, data_post], axis=0).astype(dtype_orig)
-
-        # base empty ndarray
+        # create output ndarray
         if self.nchannels == 1:
-            shape = (self.length)
+            data = np.zeros(self.length, dtype=dtype_calc)
         else:
-            shape = (self.length, self.nchannels)
-        data = np.array(np.zeros(shape))
+            data = np.zeros((self.length, self.nchannels), dtype=dtype_calc)
 
-        # fill
-        n = 0  # tracks number of impulses used
-        while n < nimpulses:
-            pos = random.randint(0, data.shape[0])
-            chunk = self.get_chunk_apply_env()
-            data = place_chunk(data, chunk.data, pos)
-            n += 1
+        # place the chunks
+        for i in range(nimpulses):
+            start = positions[i]
+            # always a 1-d array: chunks are converted to mono in __init__
+            chunk = self.get_chunk_apply_env().data.astype(dtype_calc)
+            # clip chunk to track boundary
+            end = min(start + chunk.shape[0], self.length)
+            chunk = chunk[:end - start]
+            # pan: apply before writing (stereo only)
+            if self.nchannels != 1:
+                chunk = apply_pan(pan_positions[pan_choices[i]], chunk)  # pyright: ignore
+            # overlap: there is alsready sound where chunk should be placed => fade chunk with existing sound.
+            overlap = data[start:end] if self.nchannels == 1 else data[start:end, :]
+            if np.any(overlap != 0):
+                chunk = fade(overlap, chunk)
+            # write to the output ndarray
+            if self.nchannels == 1:
+                data[start:end] = chunk
+            else:
+                data[start:end, :] = chunk
             self.pb.update(1)
 
-        # use `apply_width`, not to actually change stereo width, but to add extra crackle.
+        # convert output array to original chunk dtype to avoid distorision
+        data = data.astype(dtype_orig)
+
+        # optional crackle via apply_width
         if self.crackle:
             if self.nchannels == 1:
                 data = to_stereo(data)
@@ -289,9 +268,7 @@ class Splice:
                 data = to_mono(data)
             else:
                 data = apply_width(data, self.width, self.crackle)
-
         return data
-
 
     def pipeline(self):
         if self.nimpulses == NO_SILENCE:
