@@ -82,6 +82,7 @@ class Splice:
         elif pattern is not None:
             repeat = 10.0
 
+        envelope_raw = envelope
         if envelope != ENV_RANDOM and envelope != ENV_NONE:
             try:
                 envelope_data = EnvelopeList.read(envelope)  # pyright: ignore
@@ -120,17 +121,10 @@ class Splice:
         self.crackle = crackle
         self.visualize = visualize
 
-        # define a progress bar
-        # we define the pbar as a class object so that several functions can update it at once.
-        if self.nimpulses == NO_SILENCE:
-            desc = f"splicing (length: {self.length_seconds}s., no silence)"
-            total = self.length * self.nlines
-        else:
-            desc=f"splicing chunks (length={self.length_seconds}s., {self.nimpulses} impulses/s.)"
-            total = int(self.nimpulses * self.length_seconds / 60)
-        self.pb = tqdm(desc=desc, total=total)  # pyright: ignore
+        # prgress bar. see self.pb property
+        self._pb = None
 
-        print(textwrap.dedent(f"""\n
+        print(textwrap.dedent(f"""
             aura::splice - fill a track with randomly positionned chunks
                 * input:
                     * path to chunks.... {trackspath}
@@ -142,8 +136,23 @@ class Splice:
                     * nlines............ {self.nlines}
                     * width............. {self.width}
                     * channels.......... {self.nchannels}
+                    * envelope.......... {envelope}
         """))
         return
+
+    @property
+    def pb(self):
+        if not self._pb:
+            # define a progress bar
+            # we define the pbar as a class object so that several functions can update it at once.
+            if self.nimpulses == NO_SILENCE:
+                desc = f"splicing (length: {self.length_seconds}s., no silence)"
+                total = self.length * self.nlines
+            else:
+                desc=f"splicing chunks (length={self.length_seconds}s., {self.nimpulses} impulses/s.)"
+                total = int(self.nimpulses * self.length_seconds / 60)
+            self._pb = tqdm(desc=desc, total=total)  # pyright: ignore
+        return self._pb
 
     def get_chunk_apply_env(self) -> Track:
         """
