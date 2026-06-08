@@ -2,4 +2,4 @@ venv/
 **/__pycache__/
 out/
 .venv
-data/*
+data_dev/*
