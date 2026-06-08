@@ -38,7 +38,7 @@ class Splice:
     envelope: EnvelopeList|Literal["random"]|None
     nchannels: int
     width: float
-    mode: int
+    lines: int
     pattern: Track|None
     pattern_repeat: int
     overwrite: bool
@@ -53,7 +53,7 @@ class Splice:
         envelope:str|None=ENV_NONE,
         nchannels:Literal[1,2]=2,
         width:float=1,
-        mode:int=2,
+        lines:int=2,
         pattern:str|None=None,
         repeat:float|None=10,
         overwrite:bool=False,
@@ -68,8 +68,8 @@ class Splice:
         crackle = validate_pretty("crackle", validate_type, i=crackle, type_=bool)
         length = validate_pretty("length", validate_type, i=length, type_=float)
 
-        validate_pretty("mode", validate_type, i=mode, type_=int)
-        validate_pretty("mode", validate_comparison, opname="gt", a=mode, b=0)
+        validate_pretty("lines", validate_type, i=lines, type_=int)
+        validate_pretty("lines", validate_comparison, opname="gt", a=lines, b=0)
         validate_pretty("nchannels", validate_isinlist, i=nchannels, vallist=[1,2])
         validate_pretty("width", validate_float_isinrange, i=width, min_=0, max_=1, inclusive=True)
 
@@ -91,10 +91,10 @@ class Splice:
         # disable width on stereo
         if nchannels == 1:
             width = 0.
-        # if the track is in mono, set `mode` to 1 so we only work on 1 channel
-        # effectively, this disables mode if 'nchannels' != 2
+        # if the track is in mono, set `lines` to 1 so we only work on 1 channel
+        # effectively, this disables lines if 'nchannels' != 2
         if nchannels != 2:
-            mode = 1
+            lines = 1
 
         length_seconds = length
         length = seconds_to_frame(length, chunks.rate)
@@ -108,7 +108,7 @@ class Splice:
         self.envelope = envelope_data  # pyright: ignore
         self.nchannels = nchannels
         self.width = width
-        self.mode = mode
+        self.lines = lines
         self.pattern = pattern_chunk
         self.pattern_repeat = seconds_to_frame(repeat, chunks.rate)  # pyright:ignore
         self.overwrite = overwrite
@@ -118,7 +118,7 @@ class Splice:
         # define a progress bar
         if self.nimpulses == NO_SILENCE:
             desc = f"splicing (length: {self.length_seconds}s., no silence)"
-            total = self.length * self.mode or self.nchannels
+            total = self.length * self.lines
         else:
             desc=f"splicing chunks (length={self.length_seconds}s., {self.nimpulses} impulses/s.)"
             total = int(self.nimpulses * self.length_seconds / 60)
@@ -133,7 +133,7 @@ class Splice:
                     * path.............. {self.outpath}
                     * length (s.) ...... {self.length_seconds}
                     * impulses/minute... {self.nimpulses}
-                    * mode.............. {self.mode}
+                    * lines............. {self.lines}
                     * width............. {self.width}
                     * channels.......... {self.nchannels}
         """))
@@ -175,18 +175,18 @@ class Splice:
     def no_silence(self) -> np.ndarray:
         """
         fill strategy if `nimpulses` is "no-silence".
-        fill `self.mode` tracks (1 or more) with chunks until track duration is completed.
+        fill `self.lines` tracks (1 or more) with chunks until track duration is completed.
         then, merge these tracks in stereo space.
         """
         # mono => fill 1  channels with samples
         if self.nchannels == 1:
             data = self.no_silence_once()
-        # stereo => fill `self.mode` channels with samples, then convert them back to stereo (2-channel track)
+        # stereo => fill `self.lines` channels with samples, then convert them back to stereo (2-channel track)
         else:
             # prepare individual tracks
             tracks = [
                 self.no_silence_once()
-                for _ in range(self.mode)
+                for _ in range(self.lines)
             ]
             # clip tracks to the shortest length
             min_len = min(t.shape[0] for t in tracks)
@@ -194,7 +194,7 @@ class Splice:
                 t[:min_len,] for t in tracks
             ]
             # combine in a single numpy array
-            # `squeeze` is used if `self.mode==1`: np.stack() will then create a shape (nsamples,1),
+            # `squeeze` is used if `self.lines==1`: np.stack() will then create a shape (nsamples,1),
             # and squeeze converts it back to (nsamples,): normal mono audio.
             data = np.stack([ t for t in tracks ], axis=1).squeeze()
             data = to_stereo(data)  # convert multichannel to stereo
@@ -211,13 +211,13 @@ class Splice:
         length_seconds = frame_to_seconds(self.length, self.rate)
         nimpulses = int(self.nimpulses * length_seconds / 60)
 
-        # define possible panning positions depending on `self.width` and `self.mode`.
+        # define possible panning positions depending on `self.width` and `self.lines`.
         # pan_pos is an array of all possible panning positions, in -1..1 space.
         pan_positions = None
-        if self.mode == 1:
+        if self.lines == 1:
             pan_positions = [0]
         else:
-            pan_positions = np.linspace(-1*self.width, 1*self.width, self.mode)
+            pan_positions = np.linspace(-1*self.width, 1*self.width, self.lines)
 
         def pan_chunk(_chunk: np.ndarray):
             if self.nchannels != 1:
