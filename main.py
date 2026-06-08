@@ -165,7 +165,7 @@ def split(
     "-L", "--lines",
     type=click.INT,
     default=2,
-    help="number of 'lines', or pan-positions on which to place sound in stereo. if lines=10, sound will be distributed accross 10 lines panned from L to R. output will be converted back to stereo. useless if nchannels==1"
+    help="number of 'lines', or pan-positions on which to place sound in stereo. if lines=10, sound will be distributed accross 10 lines panned evenly from L to R (-1,-0.9,...,0.9,1). output will be converted back to stereo. useless if nchannels==1"
 )
 @click.option(
     "-p", "--pattern",
