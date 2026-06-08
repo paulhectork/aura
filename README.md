@@ -52,28 +52,20 @@ split a track randonly into chunks of predefined length, and save those chunks t
 outputted chunks can be found [here](https://github.com/paulhectork/aura/tree/main/data/chunks).
 
 ```bash
-uv run main.py split [OPTIONS] ./path/to/input/track
-```
+# usage
+uv run main.py split [OPTIONS] <./path/to/input/track>
 
-```
-  command line interface for aura.split: generate `nchunks` random chunks of
-  `length` seconds (+/- `dev` standard deviation) from track `trackpath` and
-  write them to `output`
+# a full command looks like this
+uv run main.py split \
+    </path/to/input/track> \
+    --outpath   </path/to/output/directory> \
+    --length    <float: length of output chunks in seconds> \
+    --dev       <float: standard deviation from length in seconds> \
+    --nchunks   <int: number of chunts to generate> \
+    --nchannels <1|2: stereo or mono> \
 
-Options:
-  -o, --outpath TEXT        path to the output file or directory  [required]
-  -l, --length FLOAT RANGE  length of output chunks (in seconds)  [x>=0;
-                            required]
-  -d, --dev FLOAT           length of standard deviation, in seconds (defaults
-                            to 0)
-  -n, --nchunks INTEGER     number of samples to generate (if None,
-                            tracklength / length)
-  -c, --nchannels [1|2]     number of channels in output tracks (1=mono,
-                            2=stereo). if None, same as number of channels in
-                            input track
-  -W, --overwrite           overwrite contents of output. if not used, will
-                            raise an error if the output dir or file exists
-                            (default=False)
+# view help for the full docs
+uv run main.py split --help
 ```
 
 ### `splice`
@@ -83,72 +75,40 @@ Options:
 a track made out of the above chunks can be found [here](https://github.com/paulhectork/aura/blob/main/data/splice_500i_60s.wav).
 
 ```bash
-uv run main.py splice [OPTIONS] ./path/to/chunks/directory
-```
+# basic usage
+uv run main.py splice [OPTIONS] /path/to/chunks/directory
 
-```
-  command line interface for aura.splice: generate a track of `length` seconds
-  by playing chunks in `trackspath` randomly `nimpulses` times and write it to
-  `outpath`. it is possible to apply envelopes to the tracks, place them in
-  stereo space, add a repeating pattern...
+# a full command looks like this
+uv run main.py splice \
+    </path/to/chunk/directory> \
+    --outpath </path/to/output/file> \
+    --length <float: output length in seconds> \
+    --nimpulses <int: number of impulses per minute (equivalent to BPM)> \
+    --channels <1|2: stereo or mono> \
+    --lines <int: number of pan positions on which to place sound> \
+    --width <float: stereo width, in range 0..1>
+    --envelope <"random" or path to envelope file: envelope to apply> \
+    --crackle <flag: add crackle through numpy dtype conversions>
 
-Options:
-  -l, --length INTEGER        length of output track in seconds  [required]
-  -i, --nimpulses INT OR STR  number of impulses per minute (an impulse is a
-                              trigger to add a chunk to the output track).
-                              either '<int>' (use a defined number of
-                              impulses) or 'no-silence' (fill the track with
-                              chunks until the length is over)  [required]
-  -e, --envelope TEXT         evelope(s) to process the chunks. accepted value
-                              are 'random' (to use randomly generated
-                              envelopes), '<path to envelope file>' (to use
-                              user-defined envelopes). If not provided, no
-                              envelope will be applied to the chunks.
-  -c, --nchannels [1|2]       number of channels in the output track (1=mono,
-                              2=stereo)
-  -w, --width FLOAT RANGE     streo width (no effect if 'nchannels==1'): if
-                              '1', tracks will be panned to 100% left/right,
-                              if '0.3', tracks will be panned to 30% of
-                              left/right  [0<=x<=1]
-  -L, --lines INTEGER         number of 'lines', or pan-positions on which to
-                              place sound in stereo. if lines=10, sound will
-                              be distributed accross 10 lines panned evenly
-                              from L to R (-1,-0.9,...,0.9,1). output will be
-                              converted back to stereo. useless if
-                              nchannels==1
-  -p, --pattern TEXT          path to a pattern-track that will be added
-                              repeatedly to the output.
-  -r, --repeat FLOAT          interval in seconds at which to repeat
-                              'pattern'. must be shorter than 'pattern''s
-                              length
-  --crackle                   add extra clipping'n'crackling to the generated
-                              track (done by messing with type conversion when
-                              applying width)
-  -W, --overwrite             overwrite contents of output. if not used, will
-                              raise an error if the output dir or file exists
-                              (default=False)
-  -o, --outpath TEXT          path to the output file or directory  [required]
-  --help                      Show this message and exit.
-
+# view help for the full docs
+uv run main.py splice --helo
 ```
 
 ### `envelope`
 
 `envelope` is very simple: it generates and writes to file a certain amount of ADSR sound envelopes.
 
-```bash
-uv run main.py <n>
-```
-
 some envelopes can be found [here](https://github.com/paulhectork/aura/blob/main/data/envs.txt).
 
-```
-  generate `n` random envelopes and write them to `outpath`
+```bash
+# basic usage
+uv run main.py envelope <n>
 
-Options:
-  -W, --overwrite     overwrite contents of output. if not used, will raise an
-                      error if the output dir or file exists (default=False)
-  -o, --outpath TEXT  path to the output file or directory  [required]
+# full command example: generate 100 envelopes
+uv run main.py envelope 100 -o </path/to/output/envelope/file.json>
+
+# view help
+uv run main.py envelope --help
 ```
 
 ---
