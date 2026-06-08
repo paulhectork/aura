@@ -3,6 +3,7 @@ from pathlib import Path
 import random
 
 import numpy as np
+from tqdm import tqdm
 
 from src.utils.validate import validate_type, validate_comparison, validate_isinlist, validate_float_isinrange, validate_pretty
 from src.utils.io_op import check_exists_file
@@ -62,9 +63,9 @@ class Splice:
         chunks = TrackList.read_from_dir(trackspath)
         outpath, exists = check_exists_file(outpath, overwrite)
         pattern_chunk = Track.read(pattern) if pattern is not None else None
-        length = validate_pretty("length", validate_type, i=length, type_=float)
         nimpulses = validate_nimpulses_pretty(nimpulses)
         crackle = validate_pretty("crackle", validate_type, i=crackle, type_=bool)
+        length = validate_pretty("length", validate_type, i=length, type_=float)
 
         validate_pretty("mode", validate_type, i=mode, type_=int)
         validate_pretty("mode", validate_comparison, opname="gt", a=mode, b=0)
@@ -94,11 +95,14 @@ class Splice:
         if nchannels != 2:
             mode = 1
 
+        length_seconds = length
+        length = seconds_to_frame(length, chunks.rate)
+
         # NOTE: all tracks are converted to mono: the mono chunks will be placed in stereo space
-        #self.chunks = chunks.resample().to_mono()
+        self.length_seconds = length_seconds
+        self.length = length
         self.chunks = chunks.resample().to_mono()
         self.outpath = outpath
-        self.length = seconds_to_frame(length, chunks.rate)
         self.nimpulses = nimpulses
         self.envelope = envelope_data  # pyright: ignore
         self.nchannels = nchannels
@@ -109,6 +113,15 @@ class Splice:
         self.overwrite = overwrite
         self.rate = chunks.rate
         self.crackle = crackle
+
+        if self.nimpulses == NO_SILENCE:
+            desc = f"splicing (length: {self.length_seconds}s., no silence)"
+            total = self.length * self.mode or self.nchannels
+        else:
+            desc=f"splicing chunks (length={self.length_seconds}s., {self.nimpulses} impulses/s.)"
+            total = int(self.nimpulses * self.length_seconds / 60)
+        self.pb = tqdm(desc=desc, total=total)  # pyright: ignore
+
         return
 
     def get_chunk_apply_env(self) -> Track:
@@ -135,14 +148,21 @@ class Splice:
         fill 1 track with chunks until self.length has been reached
         """
         data = self.get_chunk_apply_env().data
+        self.pb.update(data.shape[0])
         l = data.shape[0]
         while l < self.length:
             chunk = self.get_chunk_apply_env().data
             data = np.concatenate([data, chunk], axis=0)
             l = data.shape[0]
+            self.pb.update(chunk.shape[0])
         return data
 
     def no_silence(self) -> np.ndarray:
+        """
+        fill strategy if `nimpulses` is "no-silence".
+        fill `self.mode` tracks (1 or more) with chunks until track duration is completed.
+        then, merge these tracks in stereo space.
+        """
         # mono => fill 1  channels with samples
         if self.nchannels == 1:
             data = self.no_silence_once()
@@ -168,9 +188,13 @@ class Splice:
         return data
 
     def impulses(self) -> np.ndarray:
+        """
+        fill strategy if `nimpulses` is a number (# of impulses per minute).
+        fill the track with `nimpulses` chunks per minute placed randomly in time and panned randomly in stereo space.
+        """
         # calculate total number of impulses to generate for the whole output track duration.
         length_seconds = frame_to_seconds(self.length, self.rate)
-        nimpulses = int((self.nimpulses / 60) * length_seconds)
+        nimpulses = int(self.nimpulses * length_seconds / 60)
 
         # define possible panning positions depending on `self.width` and `self.mode`.
         # pan_pos is an array of all possible panning positions, in -1..1 space.
@@ -240,6 +264,7 @@ class Splice:
             chunk = self.get_chunk_apply_env()
             data = place_chunk(data, chunk.data, pos)
             n += 1
+            self.pb.update(1)
 
         # use `apply_width`, not to actually change stereo width, but to add extra crackle.
         if self.crackle:
