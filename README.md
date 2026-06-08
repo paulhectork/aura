@@ -25,7 +25,7 @@ the idea for `aura` dates back to 6-7 years when i was obsessively into harsh no
 - the magnificent [Malheurr](https://weworshipthevoid.bandcamp.com/album/v15d-purge-fluids-causerie-sur-le-temps) which has always sounded like randomized black metal to me
 - [D. Kreitzer & J. Erdős](https://weworshipthevoid.bandcamp.com/album/v16d-organised-sound-infinitary-combinatorics-of-a-finite-set) which literally asks for an aura-like tool to play the album.
 
-since those 6-7 years, i also started coding quite a bit, and wanted both to get back into "fun" (non-professionnal) and "creative" (small scale) coding. i also wanted to learn more about python sound processing (which is too mathy for me), numpy (which i doubt i learned anything), OOP, CLI UI and designing a library.
+since those 6-7 years, i also started coding quite a bit, and wanted both to get back into "fun" (non-professionnal) and "creative" (small scale) coding. i also wanted to learn more about python sound processing (which is too mathy for me), numpy (which i doubt i learned anything), oop, cli ui and library design.
 
 ---
 
