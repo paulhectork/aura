@@ -81,14 +81,14 @@ uv run main.py splice [OPTIONS] /path/to/chunks/directory
 # a full command looks like this
 uv run main.py splice \
     </path/to/chunk/directory> \
-    --outpath </path/to/output/file> \
-    --length <float: output length in seconds> \
+    --outpath   </path/to/output/file> \
+    --length    <float: output length in seconds> \
     --nimpulses <int: number of impulses per minute (equivalent to BPM)> \
-    --channels <1|2: stereo or mono> \
-    --lines <int: number of pan positions on which to place sound> \
-    --width <float: stereo width, in range 0..1>
-    --envelope <"random" or path to envelope file: envelope to apply> \
-    --crackle <flag: add crackle through numpy dtype conversions>
+    --channels  <1|2: stereo or mono> \
+    --lines     <int: number of pan positions on which to place sound> \
+    --width     <float: stereo width, in range 0..1>
+    --envelope  <"random" or path to envelope file: envelope to apply> \
+    --crackle   <flag: add crackle through numpy dtype conversions>
 
 # view help for the full docs
 uv run main.py splice --helo
