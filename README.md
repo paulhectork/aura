@@ -49,7 +49,7 @@ an input track example can be found [here](https://github.com/paulhectork/aura/b
 
 ### `split`
 
-split a track randonly into chunks of predefined length, and save those chunks to an array
+split a track randonly into chunks of predefined length, and save those chunks to a folder.
 
 outputted chunks can be found [here](https://github.com/paulhectork/aura/tree/main/data/chunks).
 
