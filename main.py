@@ -247,7 +247,7 @@ def splice(
     type=click.Choice(Gen.allowed_soundtypes),
 )
 @click.option(
-    "-f", "--frequency",
+    "-f", "--freq",
     type=click.STRING,
     help="frequency or frequency range of sound. must match 'd(:d)?', with 'd' a positive integer"
 )

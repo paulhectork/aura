@@ -1,14 +1,17 @@
 import re
+import random
 from pathlib import Path
 from typing import Literal
 
 import numpy as np
+from tqdm import tqdm
 
 from src.base import Base
 from src.track import Track
+from src.utils.utils import seconds_to_frame, array_plot
 from src.utils.validate import validate_isinlist, validate_pretty, validate_type
 
-re_freq = re.compile(r"^\d+(:\d+)$")
+re_freq = re.compile(r"^\d+(:\d+)?$")
 
 class Gen(Base):
     """
@@ -44,6 +47,9 @@ class Gen(Base):
 
         validate_pretty("soundtype", validate_isinlist, i=soundtype, vallist=self.allowed_soundtypes)
 
+        # mono only for this
+        nchannels = 1
+
         super().__init__(
             action="gen",
             outpath=outpath,
@@ -63,34 +69,50 @@ class Gen(Base):
         # pipulated in `self.gen`
         self.chunks = []
 
-
     @staticmethod
     def parse_freq(freq) -> list[int]:
-        if not re_freq.match(freq):
-            raise ValueError(f"'freq' must be of shape: 'n(:n)?', with 'n' a positive integer. examples: '400:1000', '400'")
+        def to_int_ok(x):
+            try:
+                return int(x)
+            except:
+                return False
 
-        freq_list = []
-        for f in freq.split(freq):
-            validate_pretty("freq", validate_type, i=f, type_=int)
-            f = int(f)
-            freq_list.append(f)
+        if not freq or not re_freq.match(freq):
+            raise ValueError(f"'freq' must be of shape: 'n(:n)?', with 'n' a positive integer. examples: '400:1000', '400'. (got: freq='{freq}')")
 
-        return freq_list
+        return sorted([f_ for f in freq.split(":") if (f_ := to_int_ok(f))])
 
     def gen_sine(self) -> np.ndarray:
-        # INSPO:
-        # - https://gist.github.com/yuchen-xue/67b7fb72b6ae418d43b10cca2ebda153
-        # - https://zach.se/generate-audio-with-python/
-        # - https://stackoverflow.com/questions/67085963/generate-colors-of-noise-in-python
-        #
-        ...
+        """
+        adapted from https://gist.github.com/yuchen-xue/67b7fb72b6ae418d43b10cca2ebda153
+        """
+        # TODO add standard deviation
+        if len(self.freq) > 1:
+            _freq = random.randint(*self.freq)
+        else:
+            _freq = self.freq[0]
+        # points at which to sample the sine wave. frame indices are
+        # converted to seconds, so the phase is correct in Hz
+        positions = np.arange(self.length) / self.rate
+        # 0..1: maximum amplitude
+        amp = 1
+        # the sine wave
+        data = amp * np.sin(
+            # computes a phase angle for each position
+            2 * np.pi * _freq * positions
+        )
+        return data
 
     def gen_one(self, i: int) -> Track:
         data = self.gen_func()
         return Track(rate=self.rate, data=data, trackpath=self.to_outpath(i, self.soundtype))
 
     def gen(self):
-        for i, _ in enumerate(range(self.nchunks)):
+        for i, _ in tqdm(
+            enumerate(range(self.nchunks)),
+            desc=f"generating {self.soundtype}",
+            total=self.nchunks
+        ):
             self.chunks.append(self.gen_one(i))
         return self
 
