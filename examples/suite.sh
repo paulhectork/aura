@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 # a list of examples that can also function as a micro-test suite.
 # all commands below should function without an error.
 

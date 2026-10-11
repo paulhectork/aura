@@ -64,6 +64,10 @@ class Splice(Base):
         crackle:bool=False,
         visualize: bool=False
     ):
+        # stereo by default (yes it' s useful).
+        if nchannels is None:
+            nchannels = 2
+
         # validate data
         chunks = TrackList.read_from_dir(trackspath)
         rate = chunks.rate

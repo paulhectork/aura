@@ -11,6 +11,12 @@ from src.utils.validate import validate_isinlist, validate_pretty, validate_type
 re_freq = re.compile(r"^\d+(:\d+)$")
 
 class Gen(Base):
+    """
+    generate `nchunks` instances of a sound and save it to an output directory.
+    sounds are generated using `gen_*` functions. currently implemented are:
+    - `gen_sine`: generate a sine based on a frequency range.
+    """
+
     allowed_soundtypes = ["sine"]
 
     soundtype: Literal["sine"]
@@ -76,7 +82,7 @@ class Gen(Base):
 
     def gen_one(self, i: int) -> Track:
         data = self.gen_func()
-        return Track(rate=self.rate, data=data, trackpath=self.to_outpath(i))
+        return Track(rate=self.rate, data=data, trackpath=self.to_outpath(i, self.soundtype))
 
     def gen(self):
         for i, _ in enumerate(range(self.nchunks)):

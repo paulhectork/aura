@@ -24,7 +24,7 @@ class Base:
             outpath: str | Path - path to output file or directory
             outpath_type: Literal["dir"|"file"]
             overwrite: bool = False - overwrite output file or directory
-            nchannels: 1 | 2 - number of channels in output track
+            nchannels: 1 | 2 - number of channels in output track (may be None)
             nchunks: int - number of chunks to generate (if task requires)
             length: float - length of output track or chunks (in seconds, then converted to # of frames)
             dev: float | None = 0 - standard deviation from length (if task requires. in seconds, then converted to # of frames)
@@ -36,7 +36,7 @@ class Base:
         outpath = kwargs.pop("outpath")
         outpath_type = kwargs.pop("outpath_type")
         overwrite = kwargs.pop("overwrite")
-        nchannels = kwargs.pop("nchannels")
+        nchannels = kwargs.pop("nchannels", None)
         nchunks = kwargs.pop("nchunks", None)
         dev = kwargs.pop("dev", None)
 
@@ -46,7 +46,8 @@ class Base:
         else:
             outpath, _ = check_exists_file(outpath, overwrite)
 
-        validate_pretty("nchannels", validate_isinlist, i=nchannels, vallist=[1,2])
+        if nchannels:
+            validate_pretty("nchannels", validate_isinlist, i=nchannels, vallist=[1,2])
         length = validate_pretty("length", validate_type, i=length, type_=float)
         if nchunks is not None:
             nchunks = validate_pretty("nchunks", validate_type, i=nchunks, type_=int)
@@ -68,15 +69,17 @@ class Base:
         self.length_seconds = frame_to_seconds(length, self.rate)
         self.dev = dev
 
-    def to_outpath(self, i:int) -> Path:
+    def to_outpath(self, i:int, base: str) -> Path:
         """
         when generating an array of chunks (`self.chunks`), generate an
         outpath track name for a chunk
         :param i: the position of this chunk in the `self.chunk` array
+        :param base: prefix of the track name
         """
         i = trailing_zeroes(i, self.nchunks)  # pyright:ignore
-        basename_in = re.sub(r"\.[^\.]+$", "", self.track.trackpath.name)  # pyright: ignore . file name without path and extension
-        return self.outpath.joinpath(f"{basename_in}_chunk{i}.wav")
+        trackname = f"{base}_chunk{i}.wav"
+        return self.outpath.joinpath(trackname)
+
 
     def write_chunks(self):
         """

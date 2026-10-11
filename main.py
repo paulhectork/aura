@@ -23,7 +23,7 @@ INT_OR_STR = IntOrStrType()
 
 def common_options(func:Callable) -> Callable:
     """
-    adds 2 options:
+    adds options shared by several commands:
     - an option -W --overwrite that checks whether or not you can overwrite output data.
     - an option -o --out that defines an output path for the data
     """
@@ -39,6 +39,46 @@ def common_options(func:Callable) -> Callable:
         type=click.STRING,
         required=True,
         help="path to the output file or directory"
+    )
+    @click.option(
+        "-l", "--length",
+        type=click.INT,
+        required=True,
+        help="length of output track(s) in seconds"
+    )
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def common_options_arr(func: Callable) -> Callable:
+    """
+    add common options for commands that generate an array of tracks (`gen`, `split`)
+    """
+    @click.option(
+        "-d", "--dev",
+        type=click.FLOAT,
+        default=0,
+        help="length of standard deviation, in seconds (defaults to 0)"
+    )
+    @click.option(
+        "-n", "--nchunks",
+        type=click.INT,
+        help="number of samples to generate (if None, tracklength / length)"
+    )
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def nchannel_options(func: Callable) -> Callable:
+    @click.option(
+        "-c", "--nchannels",
+        type=click.Choice([1,2]),
+        default=None,
+        help="number of channels in output track(s) (1=mono, 2=stereo)"
     )
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -77,30 +117,9 @@ def envelope(
     type=click.STRING,
     required=True
 )
-@click.option(
-    "-l", "--length",
-    type=click.FloatRange(min=0),
-    required=True,
-    help="length of output chunks (in seconds)"
-)
-@click.option(
-    "-d", "--dev",
-    type=click.FLOAT,
-    default=0,
-    help="length of standard deviation, in seconds (defaults to 0)"
-)
-@click.option(
-    "-n", "--nchunks",
-    type=click.INT,
-    help="number of samples to generate (if None, tracklength / length)"
-)
-@click.option(
-    "-c", "--nchannels",
-    type=click.Choice([1,2]),
-    default=None,
-    help="number of channels in output tracks (1=mono, 2=stereo). if None, same as number of channels in input track"
-)
+@common_options_arr
 @common_options
+@nchannel_options
 def split(
     trackpath,
     outpath,
@@ -131,12 +150,6 @@ def split(
     required=True,
 )
 @click.option(
-    "-l", "--length",
-    type=click.INT,
-    required=True,
-    help="length of output track in seconds"
-)
-@click.option(
     "-i", '--nimpulses',
     type=INT_OR_STR,
     required=True,
@@ -148,12 +161,6 @@ def split(
     type=click.STRING,
     default=None,
     help="evelope(s) to process the chunks. accepted value are 'random' (to use randomly generated envelopes), '<path to envelope file>' (to use user-defined envelopes). If not provided, no envelope will be applied to the chunks."
-)
-@click.option(
-    "-c", "--nchannels",
-    type=click.Choice([1,2]),
-    default=2,
-    help="number of channels in the output track (1=mono, 2=stereo)"
 )
 @click.option(
     "-w", "--width",
@@ -193,6 +200,7 @@ def split(
     help="display a visualization of the generated track"
 )
 @common_options
+@nchannel_options
 def splice(
     trackspath,
     outpath,
@@ -226,6 +234,11 @@ def splice(
         crackle=crackle,
         visualize=visualize
     ).pipeline()
+
+
+# @common_options
+# def gen():
+#     ...
 
 
 if __name__ == "__main__":

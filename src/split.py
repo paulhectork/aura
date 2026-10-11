@@ -171,10 +171,11 @@ class Split(Base):
             assert len(chunk.shape) == len(self.track.data.shape) \
                 and assert_nchannels
 
+            basename_in = re.sub(r"\.[^\.]+$", "", self.track.trackpath.name)  # pyright: ignore . file name without path and extension
             self.chunks.append(Track(
                 rate=self.track.rate,
                 data=chunk,
-                trackpath=self.to_outpath(i)
+                trackpath=self.to_outpath(i, basename_in)
             ))
 
         return self
