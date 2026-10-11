@@ -64,7 +64,7 @@ class Gen(Base):
         self.freq = self.parse_freq(freq)
         self.visualize = visualize
         self.soundtype = soundtype
-        # length of each chunk to generate, in number of frames
+        # length of each chunk to generate, in number of frames, with standard deviation applied
         self.chunk_lengths = self.compute_chunk_lengths()
         # function used to generate chunks of sound
         self.gen_func = gen_func_mapper[self.soundtype]
