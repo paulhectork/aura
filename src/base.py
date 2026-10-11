@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import numpy as np
+from scipy.stats import truncnorm
+
 from src.utils.io_op import make_dir, check_exists_file
 from src.utils.utils import DEFAULT_RATE, frame_to_seconds, seconds_to_frame, get_chunk_ends, trailing_zeroes
 from src.utils.validate import validate_type, validate_isinlist, validate_comparison, validate_pretty
@@ -69,6 +72,7 @@ class Base:
         self.length_seconds = frame_to_seconds(length, self.rate)
         self.dev = dev
 
+    # used by splice, split, gen
     def to_outpath(self, i:int, base: str) -> Path:
         """
         when generating an array of chunks (`self.chunks`), generate an
@@ -80,7 +84,35 @@ class Base:
         trackname = f"{base}_chunk{i}.wav"
         return self.outpath.joinpath(trackname)
 
+    # used by split and gen
+    def compute_chunk_lengths(self) -> np.ndarray:
+        """
+        calculate chunk lengths for all `self.nchunks` chunks,
+        applying standard deviation.
+        chunk lengths (in number of frames) are calculated using a
+        truncated standard deviation. truncation allows to set min/max
+        values for the standard deviations. we truncate to (0, 2*length)
+        """
+        if self.dev > 0:
+            # standard deviation in absolute (seconds) to relative
+            abs_to_std = lambda x: (x - self.length) / self.dev
 
+            min_ = abs_to_std(0)
+            max_ = abs_to_std(2*self.length)
+
+            chunk_lengths = np.array(truncnorm.rvs(
+                min_, max_,
+                loc=self.length,
+                scale=self.dev,
+                size=self.nchunks
+            ))
+            assert chunk_lengths[chunk_lengths < 0].shape[0] == 0
+            assert chunk_lengths[chunk_lengths > 2*self.length].shape[0] == 0
+        else:
+            chunk_lengths = np.array([self.length for _ in range(self.nchunks)])
+        return chunk_lengths
+
+    # used by split and gen
     def write_chunks(self):
         """
         when generating an array of chunks (`self.chunks`),

@@ -64,9 +64,11 @@ class Gen(Base):
         self.freq = self.parse_freq(freq)
         self.visualize = visualize
         self.soundtype = soundtype
+        # length of each chunk to generate, in number of frames
+        self.chunk_lengths = self.compute_chunk_lengths()
         # function used to generate chunks of sound
         self.gen_func = gen_func_mapper[self.soundtype]
-        # pipulated in `self.gen`
+        # populated in `self.gen`
         self.chunks = []
 
     @staticmethod
@@ -82,18 +84,17 @@ class Gen(Base):
 
         return sorted([f_ for f in freq.split(":") if (f_ := to_int_ok(f))])
 
-    def gen_sine(self) -> np.ndarray:
+    def gen_sine(self, chunk_length) -> np.ndarray:
         """
         adapted from https://gist.github.com/yuchen-xue/67b7fb72b6ae418d43b10cca2ebda153
         """
-        # TODO add standard deviation
         if len(self.freq) > 1:
             _freq = random.randint(*self.freq)
         else:
             _freq = self.freq[0]
         # points at which to sample the sine wave. frame indices are
         # converted to seconds, so the phase is correct in Hz
-        positions = np.arange(self.length) / self.rate
+        positions = np.arange(chunk_length) / self.rate
         # 0..1: maximum amplitude
         amp = 1
         # the sine wave
@@ -103,17 +104,17 @@ class Gen(Base):
         )
         return data
 
-    def gen_one(self, i: int) -> Track:
-        data = self.gen_func()
+    def gen_one(self, i: int, chunk_length) -> Track:
+        data = self.gen_func(chunk_length=chunk_length)
         return Track(rate=self.rate, data=data, trackpath=self.to_outpath(i, self.soundtype))
 
     def gen(self):
-        for i, _ in tqdm(
-            enumerate(range(self.nchunks)),
+        for i, chunk_length in tqdm(
+            enumerate(self.chunk_lengths),
             desc=f"generating {self.soundtype}",
             total=self.nchunks
         ):
-            self.chunks.append(self.gen_one(i))
+            self.chunks.append(self.gen_one(i, chunk_length))
         return self
 
     def pipeline(self) -> "Gen":

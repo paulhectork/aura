@@ -103,26 +103,7 @@ class Split(Base):
         - chunk_ends    : end position of all chunks
         """
         # 1; calculate chunk lengths, applying standard deviation if needed
-        #
-        #  chunk lengths (in number of frames) are calculated using a truncated standard deviation. truncation allows to set min/max values for the standard deviations.
-        # we truncate to (0, 2*length)
-        # `truncnorm.rvs` expects min/max to be expressed in `number of standard deviations` => we convert from absoute min/max values to numbe of standard deviations
-        abs_to_std = lambda x: (x - self.length) / self.dev
-
-        if self.dev > 0:
-            min_ = abs_to_std(0)
-            max_ = abs_to_std(2*self.length)
-
-            chunk_lengths = np.array(truncnorm.rvs(
-                min_, max_,
-                loc=self.length,
-                scale=self.dev,
-                size=self.nchunks
-            ))
-            assert chunk_lengths[chunk_lengths < 0].shape[0] == 0
-            assert chunk_lengths[chunk_lengths > 2*self.length].shape[0] == 0
-        else:
-            chunk_lengths = np.array([self.length for _ in range(self.nchunks)])
+        chunk_lengths = self.compute_chunk_lengths()
 
         # 2: calculate chunk starting positions
         # if split_all, all chunks are successive. otherwise, chunks are positionned at random
