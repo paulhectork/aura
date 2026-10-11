@@ -7,12 +7,13 @@ import numpy as np
 from scipy.stats import truncnorm
 from tqdm import tqdm
 
+from src.base import Base
 from src.track import Track
 from src.utils.io_op import make_dir
 from src.utils.utils import seconds_to_frame, get_chunk_ends, trailing_zeroes
 from src.utils.validate import validate_type, validate_isinlist, validate_comparison, validate_pretty
 
-class Split:
+class Split(Base):
 
     track: Track
     outpath: Path
@@ -36,38 +37,38 @@ class Split:
     ):
         # validate data
         track = Track.read(trackpath)
-        outpath = make_dir(outpath, overwrite)  # pyright: ignore
+        rate = track.rate
 
-        length = validate_pretty("length", validate_type, i=length, type_=float)
-        if nchunks is not None:
-            nchunks = validate_pretty("nchunks", validate_type, i=nchunks, type_=int)
-        if dev is not None:
-            dev = validate_pretty("dev", validate_type, i=dev, type_=float)
-            validate_pretty("dev", validate_comparison, opname="lt", a=dev, b=length)
+        # NOTE: after calling this, use `this.[arg]` instead of the parameters passed to __init__:
+        # super().__init__() does conversions from frames to seconds and back
+        super().__init__(
+            action="split",
+            outpath=outpath,
+            length=length,
+            nchunks=nchunks,
+            dev=dev,
+            overwrite=overwrite,
+            rate=rate
+        )
+
         if nchannels is not None:
             nchannels = validate_pretty("nchannels", validate_type, i=nchannels, type_=int)
             validate_pretty("nchannels", validate_isinlist, i=nchannels, vallist=[1, 2])
 
-        # define defaults and do conversions
-        length = seconds_to_frame(length, track.rate)
-        dev = 0 if dev is None else float(dev)
-        dev = seconds_to_frame(dev, track.rate)
         if nchunks is None or nchunks == 0:
-            nchunks = int(track.nframes / length)  # track length / splitted chunk length
+            nchunks = int(track.nframes / self.length)  # track length / splitted chunk length
+            self.nchunks = nchunks
         if nchannels is None:
             nchannels = 1 if track.nchannels == 1 else 2  # define default based on number of channels in input track
         if nchannels == 1:
             track = track.to_mono()
         else:
             track = track.to_stereo()
+
         # flag to split the entire track into consecutive chunks of lenght `length` if `nchunks * length` == `track.nframes`
-        split_all = nchunks * length == track.nframes  # pyright:ignore .
+        split_all = self.nchunks * self.length == track.nframes  # pyright:ignore .
 
         self.track = track
-        self.outpath = outpath  # pyright: ignore
-        self.length = length  # internally stored at self.track's sampling rate
-        self.nchunks = nchunks  # pyright: ignore
-        self.dev = dev
         self.nchannels = nchannels
         self.split_all = split_all
 
@@ -184,12 +185,3 @@ class Split:
             ))
 
         return self
-
-    def write_chunks(self):
-        """
-        write self.chunks to outpath folder
-        """
-        for chunk in self.chunks:
-            chunk.write()
-        print()
-        print(f"aura::split: output chunks saved to: {self.outpath}")
