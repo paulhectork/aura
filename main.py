@@ -2,7 +2,9 @@ import functools
 from typing import Callable
 
 import click
+from numpy import common_type
 
+from src.gen import Gen
 from src.split import Split
 from src.splice import Splice, NO_SILENCE
 from src.envelope import random_envs_to_file
@@ -24,8 +26,9 @@ INT_OR_STR = IntOrStrType()
 def common_options(func:Callable) -> Callable:
     """
     adds options shared by several commands:
-    - an option -W --overwrite that checks whether or not you can overwrite output data.
-    - an option -o --out that defines an output path for the data
+    `-W --overwrite` checks whether or not you can overwrite output data.
+    `-o --out` defines an output path for the data
+    `-l --length` defines the length of output track(s)
     """
     @click.option(
         '-W', "--overwrite",
@@ -55,6 +58,8 @@ def common_options(func:Callable) -> Callable:
 def common_options_arr(func: Callable) -> Callable:
     """
     add common options for commands that generate an array of tracks (`gen`, `split`)
+    - `-n --nchunks` defines the number of chunks to generate
+    - `-d --dev` defines a standard deviation from length, in seconds
     """
     @click.option(
         "-d", "--dev",
@@ -236,9 +241,45 @@ def splice(
     ).pipeline()
 
 
-# @common_options
-# def gen():
-#     ...
+@cli.command
+@click.argument(
+    "soundtype",
+    type=click.Choice(Gen.allowed_soundtypes),
+)
+@click.option(
+    "-f", "--frequency",
+    type=click.STRING,
+    help="frequency or frequency range of sound. must match 'd(:d)?', with 'd' a positive integer"
+)
+@click.option(
+    "-v", "--visualize",
+    type=click.BOOL,
+    is_flag=True,
+    default=False,
+    help="display a visualization of the generated track"
+)
+@common_options_arr
+@common_options
+def gen(
+    soundtype,
+    nchunks,
+    length,
+    freq,
+    outpath,
+    dev=0,
+    overwrite=False,
+    visualize=False,
+):
+    Gen(
+        soundtype=soundtype,
+        nchunks=nchunks,
+        length=length,
+        freq=freq,
+        outpath=outpath,
+        dev=dev,
+        overwrite=overwrite,
+        visualize=visualize
+    ).pipeline()
 
 
 if __name__ == "__main__":
