@@ -15,3 +15,10 @@ $UV splice /tmp/chunks --length 60 --nimpulses 500 --width 1 --envelope random -
 
 # splice with --nlines
 $UV splice /tmp/chunks --length 60 --nimpulses 500 --nlines 10 --width 1 --envelope random --outpath /tmp/test.wav -W
+
+# gen
+uv run main.py gen sine --length 1 --nchunks 1000 -o /tmp/gen_sine/ -W -f 100:5000 -d 0.9
+
+# sine with gen
+uv run main.py splice ./data_dev/gen_sine/ -o /tmp/splice_sine.wav --length 60 --nimpulses 60 --width 1 --nlines 5 --nchannels 2 -W
+
