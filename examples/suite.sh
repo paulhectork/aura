@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# a list of examples that can also function as a micro-test suite.
+# all commands below should function without an error.
+
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$SCRIPT_DIR"/..
 

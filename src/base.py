@@ -1,10 +1,14 @@
 from pathlib import Path
 
 from src.utils.io_op import make_dir, check_exists_file
-from src.utils.utils import frame_to_seconds, seconds_to_frame, get_chunk_ends, trailing_zeroes
+from src.utils.utils import DEFAULT_RATE, frame_to_seconds, seconds_to_frame, get_chunk_ends, trailing_zeroes
 from src.utils.validate import validate_type, validate_isinlist, validate_comparison, validate_pretty
 
 
+# TODO add 2 subclasses to base ?
+#   - one for when a single output track is generated (splice, skip)
+#   - one for when an array of output tracks are generated (split, gen)
+# right now, `Base` handle both cases but this might make its API a tad messy.
 class Base:
     """base class holding utils for common arguments"""
 
@@ -28,15 +32,13 @@ class Base:
         """
         action = kwargs.pop("action")
         length = kwargs.pop("length")
-        rate = kwargs.pop("rate")
+        rate = kwargs.pop("rate", DEFAULT_RATE)
         outpath = kwargs.pop("outpath")
         outpath_type = kwargs.pop("outpath_type")
         overwrite = kwargs.pop("overwrite")
         nchannels = kwargs.pop("nchannels")
         nchunks = kwargs.pop("nchunks", None)
         dev = kwargs.pop("dev", None)
-
-        print("#### nchannels", nchannels)
 
         assert outpath_type in ("dir", "file")
         if outpath_type == "dir":
@@ -66,14 +68,26 @@ class Base:
         self.length_seconds = frame_to_seconds(length, self.rate)
         self.dev = dev
 
+    def to_outpath(self, i:int) -> Path:
+        """
+        when generating an array of chunks (`self.chunks`), generate an
+        outpath track name for a chunk
+        :param i: the position of this chunk in the `self.chunk` array
+        """
+        i = trailing_zeroes(i, self.nchunks)  # pyright:ignore
+        basename_in = re.sub(r"\.[^\.]+$", "", self.track.trackpath.name)  # pyright: ignore . file name without path and extension
+        return self.outpath.joinpath(f"{basename_in}_chunk{i}.wav")
+
     def write_chunks(self):
         """
+        when generating an array of chunks (`self.chunks`),
         write self.chunks to outpath folder (self.chunks is an array of `Track`s)
         """
         chunks = getattr(self, "chunks")
         if not chunks:
             raise AttributeError("undefined attribute: chunks")
         for chunk in chunks:
+            # chunk is a Track
             chunk.write()
         print()
         print(f"aura::{self.action}: output chunks saved to: {self.outpath}")

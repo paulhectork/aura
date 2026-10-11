@@ -4,6 +4,9 @@ import random
 import numpy as np
 
 
+# default framerate to use for tracks
+DEFAULT_RATE = 44100
+
 def trailing_zeroes(i:int, total:int)-> str:
     """
     in an iterator of size `total`, at iteration `i`, return a pretty-printed string indicating the iteration number with trailing `0`:

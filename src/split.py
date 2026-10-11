@@ -53,9 +53,9 @@ class Split(Base):
             outpath=outpath,
             outpath_type="dir",
             length=length,
+            dev=dev,
             nchunks=nchunks,
             nchannels=nchannels,
-            dev=dev,
             overwrite=overwrite,
             rate=rate
         )
@@ -90,15 +90,6 @@ class Split(Base):
         """
         self.make_chunk_pos().make_chunks().write_chunks()
         return self
-
-    def to_outpath(self, i:int) -> Path:
-        """
-        generate an outpath track name for a chunk
-        :param i: the position of this chunk in the `self.chunk` array
-        """
-        i = trailing_zeroes(i, self.nchunks)  # pyright:ignore
-        basename_in = re.sub(r"\.[^\.]+$", "", self.track.trackpath.name)  # pyright: ignore . file name without path and extension
-        return self.outpath.joinpath(f"{basename_in}_chunk{i}.wav")
 
     def make_chunk_pos(self):
         """
