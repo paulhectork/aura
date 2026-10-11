@@ -39,13 +39,22 @@ class Split(Base):
         track = Track.read(trackpath)
         rate = track.rate
 
+        if nchannels is None:
+            nchannels = 1 if track.nchannels == 1 else 2  # define default based on number of channels in input track
+        if nchannels == 1:
+            track = track.to_mono()
+        else:
+            track = track.to_stereo()
+
         # NOTE: after calling this, use `this.[arg]` instead of the parameters passed to __init__:
         # super().__init__() does conversions from frames to seconds and back
         super().__init__(
             action="split",
             outpath=outpath,
+            outpath_type="dir",
             length=length,
             nchunks=nchunks,
+            nchannels=nchannels,
             dev=dev,
             overwrite=overwrite,
             rate=rate
@@ -58,18 +67,11 @@ class Split(Base):
         if nchunks is None or nchunks == 0:
             nchunks = int(track.nframes / self.length)  # track length / splitted chunk length
             self.nchunks = nchunks
-        if nchannels is None:
-            nchannels = 1 if track.nchannels == 1 else 2  # define default based on number of channels in input track
-        if nchannels == 1:
-            track = track.to_mono()
-        else:
-            track = track.to_stereo()
 
         # flag to split the entire track into consecutive chunks of lenght `length` if `nchunks * length` == `track.nframes`
         split_all = self.nchunks * self.length == track.nframes  # pyright:ignore .
 
         self.track = track
-        self.nchannels = nchannels
         self.split_all = split_all
 
         print(textwrap.dedent(f"""\n

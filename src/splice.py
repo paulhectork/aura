@@ -4,8 +4,10 @@ import textwrap
 import random
 
 import numpy as np
+from scipy.sparse.linalg import SuperLU
 from tqdm import tqdm
 
+from src.base import Base
 from src.utils.validate import validate_type, validate_comparison, validate_isinlist, validate_float_isinrange, validate_pretty
 from src.utils.io_op import check_exists_file
 from src.utils.utils import frame_to_seconds, is_1darray, seconds_to_frame, to_mono, to_stereo, fade, is_1darray, apply_pan, apply_width, array_plot
@@ -29,7 +31,7 @@ def validate_nimpulses_pretty(nimpulses: int|str) -> int|Literal["no-silence"]:
     return validate_pretty("nimpulses", validate_nimpulses, nimpulses=nimpulses)
 
 
-class Splice:
+class Splice(Base):
 
     chunks: TrackList
     outpath: Path
@@ -63,18 +65,25 @@ class Splice:
         visualize: bool=False
     ):
         # validate data
-        overwrite = validate_pretty("overwrite", validate_type, i=overwrite, type_=bool)
         chunks = TrackList.read_from_dir(trackspath)
-        outpath, exists = check_exists_file(outpath, overwrite)
+        rate = chunks.rate
+
+        super().__init__(
+            action="splice",
+            rate=rate,
+            overwrite=overwrite,
+            outpath=outpath,
+            outpath_type="file",
+            length=length,
+            nchannels=nchannels
+        )
+
         pattern_chunk = Track.read(pattern) if pattern is not None else None
         nimpulses = validate_nimpulses_pretty(nimpulses)
         crackle = validate_pretty("crackle", validate_type, i=crackle, type_=bool)
         visualize = validate_pretty("visualize", validate_type, i=visualize, type_=bool)
-        length = validate_pretty("length", validate_type, i=length, type_=float)
-
         validate_pretty("nlines", validate_type, i=nlines, type_=int)
         validate_pretty("nlines", validate_comparison, opname="gt", a=nlines, b=0)
-        validate_pretty("nchannels", validate_isinlist, i=nchannels, vallist=[1,2])
         validate_pretty("width", validate_float_isinrange, i=width, min_=0, max_=1, inclusive=True)
 
         if repeat is not None:
@@ -82,7 +91,6 @@ class Splice:
         elif pattern is not None:
             repeat = 10.0
 
-        envelope_raw = envelope
         if envelope != ENV_RANDOM and envelope != ENV_NONE:
             try:
                 envelope_data = EnvelopeList.read(envelope)  # pyright: ignore
@@ -94,35 +102,23 @@ class Splice:
 
         # set contextual defaults and force conditionnal values for some options depending on other options.
         # disable width on stereo
-        if nchannels == 1:
+        if self.nchannels == 1:
             width = 0.
         # if the track is in mono, set `nlines` to 1 so we only work on 1 channel
         # effectively, this disables nlines if 'nchannels' != 2
-        if nchannels != 2:
+        if self.nchannels != 2:
             nlines = 1
 
-        length_seconds = length
-        length = seconds_to_frame(length, chunks.rate)
-
         # NOTE: all tracks are converted to mono: the mono chunks will be placed in stereo space
-        self.length_seconds = length_seconds
-        self.length = length
         self.chunks = chunks.resample().to_mono()
-        self.outpath = outpath
         self.nimpulses = nimpulses
         self.envelope = envelope_data  # pyright: ignore
-        self.nchannels = nchannels
         self.width = width
         self.nlines = nlines
         self.pattern = pattern_chunk
         self.pattern_repeat = seconds_to_frame(repeat, chunks.rate)  # pyright:ignore
-        self.overwrite = overwrite
-        self.rate = chunks.rate
         self.crackle = crackle
         self.visualize = visualize
-
-        # prgress bar. see self.pb property
-        self._pb = None
 
         print(textwrap.dedent(f"""
             aura::splice - fill a track with randomly positionned chunks
@@ -138,6 +134,9 @@ class Splice:
                     * channels.......... {self.nchannels}
                     * envelope.......... {envelope}
         """))
+
+        # see `pb` property
+        self._pb = None
         return
 
     @property
