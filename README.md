@@ -2,6 +2,7 @@
 
 `aura` is an (au)dio (ra)ndomizer and splitter. what it does in a nutshell is:
 
+- `gen`: generate an array of chunks following a generator function (sine, noise...)
 - `split`: take an input track and split it into randomly selected chunks
 - `splice`: take an array of input chunks and fill a track with them in stereo space
 - `envelope`: generate and write envelopes that can be used in `splice`
@@ -14,6 +15,7 @@
 
 `aura` is functionnal but here are upcoming functionnalities i want to add:
 
+- `skip`: create a CD skipping emulator
 - `splice`: implement `--pattern` and `--pattern-repeat` (define a chunk that will be appended to the output track at a regular interval)
 - `splice`: add `chaos`, a chaos factor in range 0..1 that would make things weirder: i.e., randomly reverse tracks, concentrate them in certain time intervals... ideas for non-linear randomness: Poisson distributions, mixing together different probability distributions
 
