@@ -15,7 +15,7 @@
 `aura` is functionnal but here are upcoming functionnalities i want to add:
 
 - `splice`: implement `--pattern` and `--pattern-repeat` (define a chunk that will be appended to the output track at a regular interval)
-- `splice`: add `chaos`, a chaos factor in range 0..1 that would make things weirder: i.e., randomly reverse tracks, concentrate them in certain time intervals...
+- `splice`: add `chaos`, a chaos factor in range 0..1 that would make things weirder: i.e., randomly reverse tracks, concentrate them in certain time intervals... ideas for non-linear randomness: Poisson distributions, mixing together different probability distributions
 
 ---
 

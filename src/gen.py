@@ -78,6 +78,11 @@ class Gen(Base):
         return freq_list
 
     def gen_sine(self) -> np.ndarray:
+        # INSPO:
+        # - https://gist.github.com/yuchen-xue/67b7fb72b6ae418d43b10cca2ebda153
+        # - https://zach.se/generate-audio-with-python/
+        # - https://stackoverflow.com/questions/67085963/generate-colors-of-noise-in-python
+        #
         ...
 
     def gen_one(self, i: int) -> Track:
