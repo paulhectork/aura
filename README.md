@@ -2,7 +2,7 @@
 
 `aura` is an (au)dio (ra)ndomizer and splitter. what it does in a nutshell is:
 
-- `gen`: generate an array of chunks following a generator function (sine, noise...)
+- `gen`: generate an array of sound chunks using generator functions (sine, pink/white/... noise, a mix of several generators...)
 - `split`: take an input track and split it into randomly selected chunks
 - `splice`: take an array of input chunks and fill a track with them in stereo space
 - `envelope`: generate and write envelopes that can be used in `splice`
