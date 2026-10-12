@@ -105,7 +105,8 @@ class Base:
                 loc=self.length,
                 scale=self.dev,
                 size=self.nchunks
-            ))
+            )).astype(np.int64)
+            print(chunk_lengths)
             assert chunk_lengths[chunk_lengths < 0].shape[0] == 0
             assert chunk_lengths[chunk_lengths > 2*self.length].shape[0] == 0
         else:
