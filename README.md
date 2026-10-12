@@ -16,6 +16,7 @@
 `aura` is functionnal but here are upcoming functionnalities i want to add:
 
 - `skip`: create a CD skipping emulator
+- `splice`: allow to recursively read input directories in order to compose a spliced track from several layers/sources
 - `splice`: implement `--pattern` and `--pattern-repeat` (define a chunk that will be appended to the output track at a regular interval)
 - `splice`: add `chaos`, a chaos factor in range 0..1 that would make things weirder: i.e., randomly reverse tracks, concentrate them in certain time intervals... ideas for non-linear randomness: Poisson distributions, mixing together different probability distributions
 
