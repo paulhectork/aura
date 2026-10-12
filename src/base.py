@@ -85,19 +85,21 @@ class Base:
         return self.outpath.joinpath(trackname)
 
     # used by split and gen
-    def compute_chunk_lengths(self) -> np.ndarray:
+    def compute_chunk_lengths(self, force_min: int) -> np.ndarray:
         """
         calculate chunk lengths for all `self.nchunks` chunks,
         applying standard deviation.
         chunk lengths (in number of frames) are calculated using a
         truncated standard deviation. truncation allows to set min/max
         values for the standard deviations. we truncate to (0, 2*length)
+
+        :param force_min: minimum length allowed. useful to avoid chunks with length=0
         """
         if self.dev > 0:
             # standard deviation in absolute (seconds) to relative
             abs_to_std = lambda x: (x - self.length) / self.dev
 
-            min_ = abs_to_std(0)
+            min_ = abs_to_std(force_min if min is not None else 0)
             max_ = abs_to_std(2*self.length)
 
             chunk_lengths = np.array(truncnorm.rvs(
@@ -106,7 +108,6 @@ class Base:
                 scale=self.dev,
                 size=self.nchunks
             )).astype(np.int64)
-            print(chunk_lengths)
             assert chunk_lengths[chunk_lengths < 0].shape[0] == 0
             assert chunk_lengths[chunk_lengths > 2*self.length].shape[0] == 0
         else:

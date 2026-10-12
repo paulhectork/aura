@@ -51,8 +51,23 @@ def psd_generator(f: Callable) -> Callable:
 class Gen(Base):
     """
     generate `nchunks` instances of a sound and save it to an output directory.
-    sounds are generated using `gen_*` functions. currently implemented are:
-    - `gen_sine`: generate a sine based on a frequency range.
+    sounds are generated using `gen_*` functions.
+
+    available soundtypes:
+    - "sine"
+        generate a sine based on a frequency range.
+    - "white-noise"
+    - "pink-noise"
+    - "brownian-noise"
+    - "blue-noise"
+    - "violet-noise"
+    - "random-noise"
+        for each chunk, randomly select one of the `*-noise`
+        soundtypes to generate sound. there is an equal probability to select any of those.
+    - "random"
+        for each chunk, randomly select any of `sine` or `*-noise`
+        sountypes to generate sound. sine-to-noise ratio is controlled by
+        the `sine_to_noise` parameter (0..1, precise up to the 2nd decimal)
     """
 
     allowed_soundtypes = [
@@ -103,7 +118,7 @@ class Gen(Base):
         validate_pretty("soundtype", validate_isinlist, i=soundtype, vallist=self.allowed_soundtypes)
 
         if sine_to_noise:
-            validate_pretty("soundtype", validate_float_isinrange, min_=0, max_=1, inclusive=True)
+            validate_pretty("soundtype", validate_float_isinrange, i=sine_to_noise, min_=0, max_=1, inclusive=True)
 
         # mono only for this
         nchannels = 1
@@ -136,13 +151,15 @@ class Gen(Base):
         else:
             self.freq = None
         # length of each chunk to generate, in number of frames, with standard deviation applied
-        self.chunk_lengths = self.compute_chunk_lengths()
+        # we use force_min to avoid errors when computing an FFT for 0.
+        self.chunk_lengths = self.compute_chunk_lengths(force_min=10)
         # function used to generate chunks of sound
         self.gen_func = gen_func_mapper[self.soundtype]
         # populated in `self.gen`
         self.chunks = []
 
         if self.soundtype == "random":
+            # 1. define sine_to_noise
             if sine_to_noise:
                 # user defined distribution
                 self.sine_to_noise = sine_to_noise
@@ -150,6 +167,22 @@ class Gen(Base):
                 # nornal distribution:
                 # number of sine generating functions / number of noise generating functions
                 self.sine_to_noise = 1 / len(self.noise_gens)
+
+            # 2. define random_gens, a probability distribution of generators to use based on `self.noise_to_sine` ratio
+            # total number of items in the distrib
+            slots = 100
+            sine_slots = round(self.sine_to_noise * slots)
+            noise_slots = 100 - sine_slots
+            # number of slots per noise generator ; extra is the remainder of the division and will be distributed across noise gens.
+            slots_per_noise_gen, extra = divmod(noise_slots, len(self.noise_gens))
+            self.random_gens = [self.gen_sine] * sine_slots
+            # append noise generators
+            for g in self.noise_gens:
+                self.random_gens += [g] * slots_per_noise_gen
+            # distribute `extra` across noise generators.
+            for g in random.sample(self.noise_gens, extra):
+                self.random_gens.append(g)
+
 
     @staticmethod
     def parse_freq(freq) -> list[int]:
@@ -224,9 +257,6 @@ class Gen(Base):
         return blue_noise(chunk_length)
 
     def gen_random_noise(self, chunk_length: int) -> np.ndarray:
-        """
-        for each chunk, select a noise function for which to generate sound
-        """
         func = random.choice(self.noise_gens)
         return func(chunk_length)
 
@@ -254,14 +284,7 @@ class Gen(Base):
         return data
 
     def gen_random(self, chunk_length: int) -> np.ndarray:
-        # todo move to init
-        sine_to_noise = int(self.sine_to_noise * 100)
-        noise_to_sine = 100 - sine_to_noise
-        gens = [self.gen_sine for _ in range(sine_to_noise)]
-        assert len(gens) == sine_to_noise
-        gens += random.choices(self.noise_gens, k=noise_to_sine)
-        assert len(gens) == 100
-        return random.choice(gens)(chunk_length)
+        return random.choice(self.random_gens)(chunk_length)
 
     def gen_one(self, i: int, chunk_length: int) -> Track:
         """

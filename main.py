@@ -258,6 +258,11 @@ def splice(
     default=False,
     help="display a visualization of the generated track"
 )
+@click.option(
+    "-S", "--sine-to-noise",
+    type=click.FLOAT,
+    help="if soundtype is 'random', ratio of sine chunks as compared to noise chunks. in range 0..1 (0=generate no sine, 1=generate only sines, 0.5=generate as many sines as noises)"
+)
 @common_options_arr
 @common_options
 def gen(
@@ -266,6 +271,7 @@ def gen(
     length,
     freq,
     outpath,
+    sine_to_noise,
     dev=0,
     overwrite=False,
     visualize=False,
@@ -277,6 +283,7 @@ def gen(
         freq=freq,
         outpath=outpath,
         dev=dev,
+        sine_to_noise=sine_to_noise,
         overwrite=overwrite,
         visualize=visualize
     ).pipeline()
