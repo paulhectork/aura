@@ -1,5 +1,6 @@
 import re
 import random
+import textwrap
 from pathlib import Path
 from typing import Literal, Callable
 
@@ -182,6 +183,18 @@ class Gen(Base):
             # distribute `extra` across noise generators.
             for g in random.sample(self.noise_gens, extra):
                 self.random_gens.append(g)
+
+        txt = f"""\n
+            aura::gen - generating chunks from noise generators
+                * soundtype.............. {self.soundtype}
+                * number of chunks....... {self.nchunks}
+                * chunk length........... {self.length}
+                * length std. deviation.. {self.dev}
+                {'* frequency range........' if self.freq else ''} {self.freq if self.freq else ''}
+                * output................. {self.outpath}
+        """
+        print(textwrap.dedent(txt))
+        return
 
 
     @staticmethod
