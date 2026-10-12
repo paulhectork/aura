@@ -85,7 +85,7 @@ class Base:
         return self.outpath.joinpath(trackname)
 
     # used by split and gen
-    def compute_chunk_lengths(self, force_min: int) -> np.ndarray:
+    def compute_chunk_lengths(self, force_min: int|None = None) -> np.ndarray:
         """
         calculate chunk lengths for all `self.nchunks` chunks,
         applying standard deviation.
@@ -99,7 +99,7 @@ class Base:
             # standard deviation in absolute (seconds) to relative
             abs_to_std = lambda x: (x - self.length) / self.dev
 
-            min_ = abs_to_std(force_min if min is not None else 0)
+            min_ = abs_to_std(force_min if force_min is not None else 0)
             max_ = abs_to_std(2*self.length)
 
             chunk_lengths = np.array(truncnorm.rvs(
