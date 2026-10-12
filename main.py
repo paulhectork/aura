@@ -45,7 +45,7 @@ def common_options(func:Callable) -> Callable:
     )
     @click.option(
         "-l", "--length",
-        type=click.INT,
+        type=click.FLOAT,
         required=True,
         help="length of output track(s) in seconds"
     )
