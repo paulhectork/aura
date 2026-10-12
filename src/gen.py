@@ -9,7 +9,7 @@ from tqdm import tqdm
 from src.base import Base
 from src.track import Track
 from src.utils.utils import seconds_to_frame, array_plot
-from src.utils.validate import validate_isinlist, validate_pretty, validate_type
+from src.utils.validate import validate_float_isinrange, validate_isinlist, validate_pretty, validate_type
 
 re_freq = re.compile(r"^\d+(:\d+)?$")
 
@@ -62,8 +62,12 @@ class Gen(Base):
         "brownian-noise",
         "blue-noise",
         "violet-noise",
-        "random-noise"
+        "random-noise",
+        "random"
     ]
+
+    # values of `soundtype` for which the argument `freq` is required
+    needs_freq = ["sine", "random"]
 
     soundtype: Literal["sine", "white-noise", "pink-noise", "brownian-noise", "blue-noise", "violet-noise"]
     nchunks: int
@@ -79,6 +83,7 @@ class Gen(Base):
         length: float,
         freq: str,
         outpath: str,
+        sine_to_noise: float|None = None,
         dev: float | None = 0,
         overwrite: bool = False,
         visualize: bool = False,
@@ -92,9 +97,13 @@ class Gen(Base):
             "blue-noise": self.gen_blue_noise,
             "violet-noise": self.gen_violet_noise,
             "random-noise": self.gen_random_noise,
+            "random": self.gen_random
         }
 
         validate_pretty("soundtype", validate_isinlist, i=soundtype, vallist=self.allowed_soundtypes)
+
+        if sine_to_noise:
+            validate_pretty("soundtype", validate_float_isinrange, min_=0, max_=1, inclusive=True)
 
         # mono only for this
         nchannels = 1
@@ -110,7 +119,6 @@ class Gen(Base):
             overwrite=overwrite
         )
 
-
         self.noise_gens = [
             self.gen_white_noise,
             self.gen_pink_noise,
@@ -118,11 +126,12 @@ class Gen(Base):
             self.gen_blue_noise,
             self.gen_violet_noise,
         ]
+        self.all_gens = self.noise_gens + [self.gen_sine]
 
         self.visualize = visualize
         self.soundtype = soundtype
-        # frequency is useless when generating noise
-        if soundtype == "sine":
+        # frequency is only useful if we'll generate sines
+        if soundtype in self.needs_freq:
             self.freq = self.parse_freq(freq)
         else:
             self.freq = None
@@ -132,6 +141,15 @@ class Gen(Base):
         self.gen_func = gen_func_mapper[self.soundtype]
         # populated in `self.gen`
         self.chunks = []
+
+        if self.soundtype == "random":
+            if sine_to_noise:
+                # user defined distribution
+                self.sine_to_noise = sine_to_noise
+            else:
+                # nornal distribution:
+                # number of sine generating functions / number of noise generating functions
+                self.sine_to_noise = 1 / len(self.noise_gens)
 
     @staticmethod
     def parse_freq(freq) -> list[int]:
@@ -234,6 +252,16 @@ class Gen(Base):
             2 * np.pi * _freq * positions
         )
         return data
+
+    def gen_random(self, chunk_length: int) -> np.ndarray:
+        # todo move to init
+        sine_to_noise = int(self.sine_to_noise * 100)
+        noise_to_sine = 100 - sine_to_noise
+        gens = [self.gen_sine for _ in range(sine_to_noise)]
+        assert len(gens) == sine_to_noise
+        gens += random.choices(self.noise_gens, k=noise_to_sine)
+        assert len(gens) == 100
+        return random.choice(gens)(chunk_length)
 
     def gen_one(self, i: int, chunk_length: int) -> Track:
         """
