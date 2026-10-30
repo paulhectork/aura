@@ -222,7 +222,7 @@ def splice(
     visualize
 ):
     """
-    command line interface for aura.splice: generate a track of `length` seconds by playing chunks in `trackspath` randomly `nimpulses` times and write it to `outpath`. it is possible to apply envelopes to the tracks, place them in stereo space, add a repeating pattern...
+    command line interface for aura.splice: generate a track of `length` seconds by reading chunks in directory `trackspath` recursively, and randomly playing them `nimpulses` times/minutes in a track, and write it to `outpath`. it is possible to apply envelopes to the chunks, place them in stereo space, add a repeating pattern...
     """
     Splice(
         trackspath=trackspath,
