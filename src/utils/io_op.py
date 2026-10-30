@@ -50,6 +50,15 @@ def check_exists_file(fp:Path|str, overwrite:bool) -> Tuple[Path, bool]:
     return fp, exists
 
 
+def list_files_recursive(directory):
+    """list files in directory, recursively"""
+    dp = Path(directory).expanduser().resolve()
+    if not dp.is_dir():
+        raise NotADirectoryError(f"Not a directory: {dp}")
+    # rglob("*") is cross platform and recursive
+    return [fp for fp in dp.rglob("*") if fp.is_file()]
+
+
 def make_dir(dir_: str|Path, overwrite:bool) -> Path:
     dir_, exists = check_exists(dir_, overwrite)
     if not exists:
@@ -78,7 +87,7 @@ def read_wav_from_dir(dp:str|Path) ->  List[Tuple[Tuple[int, np.ndarray], Path]]
     dp = fp_to_abs(dp)
     if not dp.is_dir():
         raise ValueError(f"'dp' should be a path to an existing directory (dp=`{dp}`)")
-    fp_list = [ fp.resolve() for fp in dp.iterdir() if fp.is_file() ]
+    fp_list = list_files_recursive(dp)
     tracklist = []
     for fp in fp_list:
         try:
